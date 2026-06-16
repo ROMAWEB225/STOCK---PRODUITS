@@ -1,0 +1,1430 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>UNITED MOTORS STOCK</title>
+    <!-- Librairie Scanner -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Font Awesome pour les icônes -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <style>
+      /* ================= RESET & THEME ================= */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+      }
+      body {
+        background: #0b1120;
+        color: #e2e8f0;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ================= HEADER ================= */
+      #app-header {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+        padding: 15px 20px 10px 20px;
+        border-bottom: 2px solid #eab308;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+        z-index: 10;
+      }
+      #app-header h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+      }
+      #app-header h1 span {
+        color: #eab308;
+      }
+      #app-header .header-badge {
+        background: #eab308;
+        color: #0b1120;
+        padding: 4px 12px;
+        border-radius: 30px;
+        font-size: 0.7rem;
+        font-weight: bold;
+      }
+
+      /* ================= PAGES (contenu principal) ================= */
+      .page-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        padding-bottom: 80px; /* espace pour la nav du bas */
+        display: none;
+      }
+      .page-container.active {
+        display: block;
+      }
+
+      /* ================= BOTTOM NAV ================= */
+      #bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #0f172a;
+        border-top: 1px solid #334155;
+        display: flex;
+        justify-content: space-around;
+        padding: 8px 0 env(safe-area-inset-bottom) 0;
+        z-index: 20;
+        backdrop-filter: blur(5px);
+        flex-shrink: 0;
+      }
+      #bottom-nav .nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: #64748b;
+        font-size: 0.6rem;
+        padding: 5px 10px;
+        transition: 0.2s;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+      }
+      #bottom-nav .nav-item i {
+        font-size: 1.6rem;
+        margin-bottom: 2px;
+        transition: 0.2s;
+      }
+      #bottom-nav .nav-item.active {
+        color: #eab308;
+      }
+      #bottom-nav .nav-item.active i {
+        transform: scale(1.1);
+        text-shadow: 0 0 15px rgba(234, 179, 8, 0.4);
+      }
+
+      /* ================= CARTES & COMPOSANTS ================= */
+      .card {
+        background: #1e293b;
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 15px;
+        border: 1px solid #334155;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+      .card-title {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #94a3b8;
+        margin-bottom: 12px;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .stat-item {
+        background: #0b1120;
+        padding: 14px;
+        border-radius: 12px;
+        text-align: center;
+        border-left: 4px solid #eab308;
+      }
+      .stat-item .number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: white;
+      }
+      .stat-item .label {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        margin-top: 4px;
+      }
+      .stat-item.danger {
+        border-left-color: #ef4444;
+      }
+      .stat-item.warning {
+        border-left-color: #f59e0b;
+      }
+
+      .alert-list {
+        list-style: none;
+      }
+      .alert-list li {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #334155;
+        font-size: 0.9rem;
+      }
+      .alert-list li .badge {
+        background: #ef4444;
+        color: white;
+        padding: 2px 10px;
+        border-radius: 30px;
+        font-size: 0.7rem;
+        font-weight: bold;
+      }
+      .alert-list li .badge.warning {
+        background: #f59e0b;
+      }
+
+      /* ================= TABLEAU STOCK ================= */
+      .search-bar {
+        width: 100%;
+        padding: 14px 18px;
+        border-radius: 50px;
+        border: 1px solid #334155;
+        background: #0b1120;
+        color: white;
+        font-size: 1rem;
+        margin-bottom: 15px;
+        outline: none;
+        transition: 0.3s;
+      }
+      .search-bar:focus {
+        border-color: #eab308;
+      }
+
+      .stock-item {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 0.5fr;
+        gap: 8px;
+        background: #0b1120;
+        padding: 12px 14px;
+        border-radius: 12px;
+        margin-bottom: 8px;
+        align-items: center;
+        border-left: 4px solid #334155;
+      }
+      .stock-item.low {
+        border-left-color: #ef4444;
+      }
+      .stock-item .ref {
+        font-weight: bold;
+        font-size: 0.8rem;
+        color: #eab308;
+      }
+      .stock-item .lib {
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .stock-item .qty {
+        font-weight: bold;
+        text-align: center;
+      }
+      .stock-item .actions i {
+        margin-left: 8px;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: 0.2s;
+        font-size: 1.1rem;
+      }
+      .stock-item .actions i:hover {
+        color: #eab308;
+      }
+
+      /* ================= SCANNER ================= */
+      #reader {
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      #scanner-controls {
+        text-align: center;
+        margin-top: 15px;
+      }
+      .btn {
+        padding: 14px 30px;
+        border: none;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 1rem;
+        background: #334155;
+        color: white;
+        cursor: pointer;
+        transition: 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .btn-primary {
+        background: #eab308;
+        color: #0b1120;
+        box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3);
+      }
+      .btn-primary:hover {
+        transform: scale(1.02);
+        filter: brightness(1.1);
+      }
+      .btn-danger {
+        background: #ef4444;
+      }
+      .btn-success {
+        background: #22c55e;
+      }
+      .btn-sm {
+        padding: 8px 18px;
+        font-size: 0.8rem;
+      }
+
+      .scan-result-box {
+        margin-top: 15px;
+        background: #0b1120;
+        padding: 15px;
+        border-radius: 16px;
+        border: 1px solid #334155;
+      }
+
+      /* ================= MODAL ================= */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        padding: 20px;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal-box {
+        background: #1e293b;
+        border-radius: 24px;
+        padding: 25px;
+        max-width: 500px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        border: 1px solid #eab308;
+      }
+      .modal-box h2 {
+        margin-bottom: 20px;
+        color: #eab308;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      .form-group label {
+        display: block;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-bottom: 5px;
+      }
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 12px 15px;
+        border-radius: 12px;
+        border: 1px solid #334155;
+        background: #0b1120;
+        color: white;
+        font-size: 1rem;
+      }
+      .form-group input:focus {
+        border-color: #eab308;
+        outline: none;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        justify-content: flex-end;
+      }
+
+      /* ================= UTILITIES ================= */
+      .text-center {
+        text-align: center;
+      }
+      .mt-10 {
+        margin-top: 10px;
+      }
+      .mb-10 {
+        margin-bottom: 10px;
+      }
+      .flex {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .w100 {
+        width: 100%;
+      }
+
+      /* ================= SCROLLBAR ================= */
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0b1120;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #eab308;
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ================= HEADER ================= -->
+    <header id="app-header">
+      <h1><span>UNITED</span> MOTORS</h1>
+      <div class="header-badge"><i class="fas fa-wrench"></i> STOCK PRO</div>
+    </header>
+
+    <!-- ================= PAGE DASHBOARD ================= -->
+    <div id="page-dashboard" class="page-container active">
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="number" id="totalItems">0</div>
+          <div class="label">Références</div>
+        </div>
+        <div class="stat-item">
+          <div class="number" id="totalValue">0€</div>
+          <div class="label">Valeur Stock</div>
+        </div>
+        <div class="stat-item danger">
+          <div class="number" id="lowStockCount">0</div>
+          <div class="label">⚠️ Rupture / Seuil bas</div>
+        </div>
+        <div class="stat-item warning">
+          <div class="number" id="expiryCount">0</div>
+          <div class="label">⏳ DLC < 30 jours</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-exclamation-triangle" style="color: #eab308"></i>
+          Alertes critiques
+        </div>
+        <ul class="alert-list" id="alertList">
+          <li style="color: #64748b; text-align: center; padding: 15px">
+            Aucune alerte, tout est sous contrôle 🚀
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-clock"></i> Derniers mouvements
+        </div>
+        <ul class="alert-list" id="lastMovements">
+          <li style="color: #64748b; text-align: center; padding: 15px">
+            Aucun mouvement enregistré
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ================= PAGE SCANNER ================= -->
+    <div id="page-scanner" class="page-container">
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-camera"></i> Scanner / Recherche
+        </div>
+        <input
+          type="text"
+          id="manualScanInput"
+          class="search-bar"
+          placeholder="🔍 Ou tapez référence / libellé..."
+          autofocus
+        />
+      </div>
+
+      <div id="reader"></div>
+      <div id="scanner-controls">
+        <button id="toggleScannerBtn" class="btn btn-primary">
+          <i class="fas fa-play"></i> Démarrer le scan
+        </button>
+      </div>
+
+      <!-- Résultat du scan -->
+      <div
+        id="scanResultContainer"
+        class="scan-result-box"
+        style="display: none"
+      >
+        <div id="scanResultContent"></div>
+      </div>
+    </div>
+
+    <!-- ================= PAGE STOCK (LISTE) ================= -->
+    <div id="page-stock" class="page-container">
+      <div class="flex mb-10">
+        <input
+          type="text"
+          id="stockSearchInput"
+          class="search-bar"
+          placeholder="🔍 Filtrer dans le stock..."
+          style="margin-bottom: 0"
+        />
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+          <i class="fas fa-plus"></i> Ajouter
+        </button>
+      </div>
+      <div id="stockListContainer"></div>
+    </div>
+
+    <!-- ================= PAGE MOUVEMENTS ================= -->
+    <div id="page-mouvements" class="page-container">
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-arrows-alt-h"></i> Entrée / Sortie rapide
+        </div>
+        <div class="form-group">
+          <label>Référence de la pièce</label>
+          <input
+            type="text"
+            id="movementRef"
+            placeholder="Ex: OEM123 ou scannez via l'onglet scanner"
+            class="search-bar"
+            style="margin-bottom: 10px"
+          />
+        </div>
+        <div class="form-group">
+          <label>Quantité</label>
+          <input
+            type="number"
+            id="movementQty"
+            value="1"
+            min="1"
+            style="
+              width: 100%;
+              padding: 12px;
+              border-radius: 12px;
+              border: 1px solid #334155;
+              background: #0b1120;
+              color: white;
+              font-size: 1rem;
+            "
+          />
+        </div>
+        <div class="flex" style="justify-content: space-between">
+          <button class="btn btn-success" onclick="processMovement('in')">
+            <i class="fas fa-arrow-down"></i> Réception (Entrée)
+          </button>
+          <button class="btn btn-danger" onclick="processMovement('out')">
+            <i class="fas fa-arrow-up"></i> Sortie Atelier
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-history"></i> Historique (20 derniers)
+        </div>
+        <ul class="alert-list" id="historyList">
+          <li style="color: #64748b; text-align: center; padding: 15px">
+            Aucun historique
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ================= PAGE SYNC ODOO ================= -->
+    <div id="page-sync" class="page-container">
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-file-export"></i> Exporter vers Odoo (CSV)
+        </div>
+        <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px">
+          Télécharge un fichier CSV avec : REFERENCE, LIBELLE, PRIX D'ACHAT,
+          EMPLACEMENT, QUANTITE, SEUIL, DLC
+        </p>
+        <button class="btn btn-primary w100" onclick="exportCSV()">
+          <i class="fas fa-download"></i> Télécharger le CSV
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-file-import"></i> Importer depuis Odoo (CSV)
+        </div>
+        <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px">
+          Importez votre export Odoo. Les colonnes doivent correspondre (ou
+          seront mappées).
+        </p>
+        <input
+          type="file"
+          id="csvFileInput"
+          accept=".csv"
+          style="color: white; margin-bottom: 15px; display: block; width: 100%"
+        />
+        <button class="btn btn-primary w100" onclick="importCSV()">
+          <i class="fas fa-upload"></i> Importer et fusionner
+        </button>
+        <div id="importResult" style="margin-top: 15px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-database"></i> Base de données
+        </div>
+        <button
+          class="btn btn-danger w100"
+          onclick="
+            if (confirm('Supprimer TOUT le stock ?')) {
+              clearAllData();
+            }
+          "
+        >
+          <i class="fas fa-trash"></i> Réinitialiser le stock
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= BOTTOM NAVIGATION ================= -->
+    <nav id="bottom-nav">
+      <button class="nav-item active" data-page="page-dashboard">
+        <i class="fas fa-chart-pie"></i> Dashboard
+      </button>
+      <button class="nav-item" data-page="page-scanner">
+        <i class="fas fa-qrcode"></i> Scanner
+      </button>
+      <button class="nav-item" data-page="page-stock">
+        <i class="fas fa-boxes"></i> Stock
+      </button>
+      <button class="nav-item" data-page="page-mouvements">
+        <i class="fas fa-exchange-alt"></i> Mouvements
+      </button>
+      <button class="nav-item" data-page="page-sync">
+        <i class="fas fa-cloud-upload-alt"></i> Odoo
+      </button>
+    </nav>
+
+    <!-- ================= MODAL AJOUT / EDITION ================= -->
+    <div class="modal-overlay" id="productModal">
+      <div class="modal-box">
+        <h2 id="modalTitle">Ajouter une pièce</h2>
+        <input type="hidden" id="editId" />
+        <div class="form-group">
+          <label>RÉFÉRENCE *</label
+          ><input id="fRef" placeholder="Réf fournisseur / OEM" />
+        </div>
+        <div class="form-group">
+          <label>LIBELLÉ *</label
+          ><input id="fLib" placeholder="Nom de la pièce" />
+        </div>
+        <div class="form-group">
+          <label>PRIX D'ACHAT (€)</label
+          ><input id="fPrix" type="number" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>EMPLACEMENT</label
+          ><input id="fEmpl" placeholder="Zone A3 / B2" />
+        </div>
+        <div class="form-group">
+          <label>QUANTITÉ</label
+          ><input id="fQty" type="number" value="0" min="0" />
+        </div>
+        <div class="form-group">
+          <label>SEUIL D'ALERTE</label
+          ><input id="fSeuil" type="number" value="5" min="0" />
+        </div>
+        <div class="form-group">
+          <label>DLC (Date limite)</label><input id="fDlc" type="date" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">Annuler</button>
+          <button class="btn btn-primary" onclick="saveProduct()">
+            <i class="fas fa-save"></i> Sauvegarder
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ===================================================================
+      // 1. INDEXEDDB - Gestion de la base locale
+      // ===================================================================
+      const DB_NAME = "UnitedMotorsDB";
+      const DB_VERSION = 3;
+      let db = null;
+
+      function openDB() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+          request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains("products")) {
+              const store = db.createObjectStore("products", {
+                keyPath: "id",
+                autoIncrement: true,
+              });
+              store.createIndex("ref", "ref", { unique: false });
+            }
+            if (!db.objectStoreNames.contains("movements")) {
+              const store = db.createObjectStore("movements", {
+                keyPath: "id",
+                autoIncrement: true,
+              });
+              store.createIndex("ref", "ref", { unique: false });
+              store.createIndex("date", "date", { unique: false });
+            }
+          };
+          request.onsuccess = (e) => {
+            db = e.target.result;
+            resolve(db);
+          };
+          request.onerror = (e) => reject(e.target.error);
+        });
+      }
+
+      function dbAdd(storeName, data) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, "readwrite");
+          const store = tx.objectStore(storeName);
+          const req = store.add(data);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbPut(storeName, data) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, "readwrite");
+          const store = tx.objectStore(storeName);
+          const req = store.put(data);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbGetAll(storeName) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, "readonly");
+          const store = tx.objectStore(storeName);
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbGetByIndex(storeName, indexName, value) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, "readonly");
+          const store = tx.objectStore(storeName);
+          const index = store.index(indexName);
+          const req = index.get(value);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbDelete(storeName, id) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, "readwrite");
+          const store = tx.objectStore(storeName);
+          const req = store.delete(id);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbGetAllByIndex(storeName, indexName, value) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, "readonly");
+          const store = tx.objectStore(storeName);
+          const index = store.index(indexName);
+          const req = index.getAll(value);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      // ===================================================================
+      // 2. FONCTIONS MÉTIER
+      // ===================================================================
+      async function getAllProducts() {
+        if (!db) await openDB();
+        return await dbGetAll("products");
+      }
+
+      async function getProductByRef(ref) {
+        if (!db) await openDB();
+        const all = await dbGetAll("products");
+        return all.find(
+          (p) => p.ref && p.ref.toUpperCase() === ref.toUpperCase(),
+        );
+      }
+
+      async function addMovement(ref, type, qty, note = "") {
+        const mov = { ref, type, qty, date: new Date().toISOString(), note };
+        await dbAdd("movements", mov);
+      }
+
+      async function getLastMovements(limit = 20) {
+        const all = await dbGetAll("movements");
+        return all
+          .sort((a, b) => new Date(b.date) - new Date(a.date))
+          .slice(0, limit);
+      }
+
+      // ===================================================================
+      // 3. UI - RENDU
+      // ===================================================================
+      async function refreshDashboard() {
+        const products = await getAllProducts();
+        const totalItems = products.length;
+        let totalValue = 0;
+        let lowStock = 0;
+        let expiring = 0;
+        const alerts = [];
+
+        const today = new Date();
+        const thirtyDays = new Date();
+        thirtyDays.setDate(today.getDate() + 30);
+
+        products.forEach((p) => {
+          totalValue += (parseFloat(p.prix) || 0) * (parseInt(p.qty) || 0);
+          const qty = parseInt(p.qty) || 0;
+          const seuil = parseInt(p.seuil) || 0;
+          if (qty <= 0 || qty <= seuil) {
+            lowStock++;
+            alerts.push({
+              ref: p.ref,
+              lib: p.lib,
+              msg: `Stock bas (${qty} restant)`,
+              type: "danger",
+            });
+          }
+          if (p.dlc) {
+            const dlcDate = new Date(p.dlc);
+            if (dlcDate <= thirtyDays && dlcDate >= today) {
+              expiring++;
+              alerts.push({
+                ref: p.ref,
+                lib: p.lib,
+                msg: `DLC dans < 30j (${p.dlc})`,
+                type: "warning",
+              });
+            } else if (dlcDate < today) {
+              expiring++;
+              alerts.push({
+                ref: p.ref,
+                lib: p.lib,
+                msg: `DLC EXPIRÉE (${p.dlc})`,
+                type: "danger",
+              });
+            }
+          }
+        });
+
+        document.getElementById("totalItems").innerText = totalItems;
+        document.getElementById("totalValue").innerText =
+          totalValue.toFixed(0) + "€";
+        document.getElementById("lowStockCount").innerText = lowStock;
+        document.getElementById("expiryCount").innerText = expiring;
+
+        // Alertes
+        const alertList = document.getElementById("alertList");
+        if (alerts.length === 0) {
+          alertList.innerHTML =
+            '<li style="color:#22c55e; text-align:center; padding:15px;">✅ Toutes les alertes sont vertes !</li>';
+        } else {
+          alertList.innerHTML = alerts
+            .slice(0, 10)
+            .map(
+              (a) =>
+                `<li><span>${a.ref} - ${a.lib}</span> <span class="badge ${a.type}">${a.msg}</span></li>`,
+            )
+            .join("");
+        }
+
+        // Derniers mouvements
+        const movements = await getLastMovements(10);
+        const movContainer = document.getElementById("lastMovements");
+        if (movements.length === 0) {
+          movContainer.innerHTML =
+            '<li style="color:#64748b; text-align:center; padding:15px;">Aucun mouvement enregistré</li>';
+        } else {
+          movContainer.innerHTML = movements
+            .map((m) => {
+              const icon = m.type === "in" ? "📥" : "📤";
+              const color = m.type === "in" ? "#22c55e" : "#ef4444";
+              return `<li><span>${icon} ${m.ref} (x${m.qty})</span> <span style="color:${color}; font-size:0.8rem;">${new Date(m.date).toLocaleString("fr-FR")}</span></li>`;
+            })
+            .join("");
+        }
+      }
+
+      async function renderStockList(filter = "") {
+        const container = document.getElementById("stockListContainer");
+        const products = await getAllProducts();
+        const filtered = products.filter(
+          (p) =>
+            (p.ref && p.ref.toUpperCase().includes(filter.toUpperCase())) ||
+            (p.lib && p.lib.toUpperCase().includes(filter.toUpperCase())),
+        );
+        if (filtered.length === 0) {
+          container.innerHTML =
+            '<div class="card" style="text-align:center; color:#64748b; padding:30px;">Aucune pièce trouvée.</div>';
+          return;
+        }
+        container.innerHTML = filtered
+          .map((p) => {
+            const qty = parseInt(p.qty) || 0;
+            const seuil = parseInt(p.seuil) || 0;
+            const isLow = qty <= 0 || qty <= seuil;
+            return `<div class="stock-item ${isLow ? "low" : ""}">
+                    <div><div class="ref">${p.ref || "N/A"}</div><div class="lib">${p.lib || "Sans libellé"}</div></div>
+                    <div class="qty">${qty}</div>
+                    <div style="font-size:0.8rem; color:#94a3b8;">${p.emplacement || "-"}</div>
+                    <div class="actions">
+                        <i class="fas fa-edit" onclick="openEditModal(${p.id})"></i>
+                        <i class="fas fa-trash" onclick="deleteProduct(${p.id})" style="color:#ef4444;"></i>
+                    </div>
+                </div>`;
+          })
+          .join("");
+      }
+
+      // ===================================================================
+      // 4. SCANNER (html5-qrcode)
+      // ===================================================================
+      let html5Scanner = null;
+      let isScannerRunning = false;
+
+      async function onScanSuccess(decodedText) {
+        // On a trouvé un code
+        document.getElementById("manualScanInput").value = decodedText;
+        await handleScanResult(decodedText);
+        // On arrête la caméra pour économiser la batterie
+        if (html5Scanner && isScannerRunning) {
+          try {
+            await html5Scanner.stop();
+            isScannerRunning = false;
+            document.getElementById("toggleScannerBtn").innerHTML =
+              '<i class="fas fa-play"></i> Démarrer le scan';
+          } catch (e) {}
+        }
+      }
+
+      function onScanFailure(err) {
+        // Ignorer les erreurs de frame (normal)
+      }
+
+      async function toggleScanner() {
+        const readerDiv = document.getElementById("reader");
+        const btn = document.getElementById("toggleScannerBtn");
+        if (isScannerRunning) {
+          if (html5Scanner) {
+            await html5Scanner.stop();
+            isScannerRunning = false;
+            btn.innerHTML = '<i class="fas fa-play"></i> Démarrer le scan';
+          }
+          return;
+        }
+        if (!html5Scanner) {
+          html5Scanner = new Html5Qrcode("reader");
+        }
+        try {
+          await html5Scanner.start(
+            { facingMode: "environment" },
+            { fps: 15, qrbox: { width: 280, height: 200 } },
+            onScanSuccess,
+            onScanFailure,
+          );
+          isScannerRunning = true;
+          btn.innerHTML = '<i class="fas fa-stop"></i> Arrêter le scan';
+        } catch (err) {
+          alert("Impossible d'accéder à la caméra. Vérifiez les permissions.");
+          console.error(err);
+        }
+      }
+
+      document
+        .getElementById("toggleScannerBtn")
+        .addEventListener("click", toggleScanner);
+
+      // ===================================================================
+      // 5. GESTION DU SCAN / RECHERCHE MANUELLE
+      // ===================================================================
+      async function handleScanResult(input) {
+        const container = document.getElementById("scanResultContainer");
+        const content = document.getElementById("scanResultContent");
+        if (!input.trim()) {
+          container.style.display = "none";
+          return;
+        }
+
+        const product = await getProductByRef(input.trim());
+        container.style.display = "block";
+
+        if (product) {
+          const qty = parseInt(product.qty) || 0;
+          const seuil = parseInt(product.seuil) || 0;
+          content.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div><strong style="color:#eab308;">${product.ref}</strong> - ${product.lib}</div>
+                        <span style="background:#334155; padding:4px 12px; border-radius:30px;">${qty} en stock</span>
+                    </div>
+                    <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                        <span>📍 ${product.emplacement || "Non défini"}</span>
+                        <span>💰 ${product.prix || 0}€</span>
+                        ${qty <= 0 || qty <= seuil ? '<span style="color:#ef4444;">⚠️ ALERTE STOCK</span>' : ""}
+                        ${product.dlc ? `<span>📅 DLC: ${product.dlc}</span>` : ""}
+                    </div>
+                    <div style="margin-top:12px; display:flex; gap:10px;">
+                        <button class="btn btn-success btn-sm" onclick="quickMovement('${product.ref}', 'in')"><i class="fas fa-arrow-down"></i> Réception +1</button>
+                        <button class="btn btn-danger btn-sm" onclick="quickMovement('${product.ref}', 'out')"><i class="fas fa-arrow-up"></i> Sortie -1</button>
+                        <button class="btn btn-sm" onclick="openEditModal(${product.id})"><i class="fas fa-edit"></i> Modifier</button>
+                    </div>
+                `;
+        } else {
+          content.innerHTML = `
+                    <div style="color:#f59e0b; margin-bottom:10px;">🔍 Référence "${input}" non trouvée dans le stock.</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAddModalWithRef('${input}')"><i class="fas fa-plus"></i> Créer cette pièce</button>
+                `;
+        }
+      }
+
+      // Événement recherche manuelle
+      let scanTimeout;
+      document
+        .getElementById("manualScanInput")
+        .addEventListener("input", function () {
+          clearTimeout(scanTimeout);
+          const val = this.value.trim();
+          if (val === "") {
+            document.getElementById("scanResultContainer").style.display =
+              "none";
+            return;
+          }
+          scanTimeout = setTimeout(() => handleScanResult(val), 300);
+        });
+
+      // ===================================================================
+      // 6. MOUVEMENTS RAPIDES
+      // ===================================================================
+      async function quickMovement(ref, type) {
+        const product = await getProductByRef(ref);
+        if (!product) {
+          alert("Pièce introuvable !");
+          return;
+        }
+        let qty = parseInt(product.qty) || 0;
+        if (type === "out" && qty <= 0) {
+          alert("Stock épuisé !");
+          return;
+        }
+        qty = type === "in" ? qty + 1 : qty - 1;
+        product.qty = qty;
+        await dbPut("products", product);
+        await addMovement(ref, type, 1, "Mouvement rapide");
+        refreshDashboard();
+        renderStockList(
+          document.getElementById("stockSearchInput")?.value || "",
+        );
+        // Rafraîchir le scan si affiché
+        if (
+          document.getElementById("scanResultContainer").style.display !==
+          "none"
+        ) {
+          await handleScanResult(ref);
+        }
+        alert(`✅ Mouvement effectué. Nouvelle quantité : ${qty}`);
+      }
+
+      async function processMovement(type) {
+        const ref = document.getElementById("movementRef").value.trim();
+        const qty = parseInt(document.getElementById("movementQty").value) || 0;
+        if (!ref) {
+          alert("Entrez une référence");
+          return;
+        }
+        if (qty <= 0) {
+          alert("Quantité invalide");
+          return;
+        }
+        const product = await getProductByRef(ref);
+        if (!product) {
+          alert(`Référence "${ref}" introuvable. Créez-la d'abord.`);
+          return;
+        }
+        let currentQty = parseInt(product.qty) || 0;
+        if (type === "out" && currentQty < qty) {
+          alert(`Stock insuffisant (${currentQty} disponible)`);
+          return;
+        }
+        product.qty = type === "in" ? currentQty + qty : currentQty - qty;
+        await dbPut("products", product);
+        await addMovement(ref, type, qty, `Mouvement manuel (${type})`);
+        refreshDashboard();
+        renderStockList(
+          document.getElementById("stockSearchInput")?.value || "",
+        );
+        document.getElementById("movementRef").value = "";
+        document.getElementById("movementQty").value = "1";
+        alert(
+          `✅ ${type === "in" ? "Réception" : "Sortie"} de ${qty} pièce(s) effectuée.`,
+        );
+        // Rafraîchir historique
+        refreshHistory();
+      }
+
+      async function refreshHistory() {
+        const movements = await getLastMovements(20);
+        const container = document.getElementById("historyList");
+        if (movements.length === 0) {
+          container.innerHTML =
+            '<li style="color:#64748b; text-align:center; padding:15px;">Aucun historique</li>';
+          return;
+        }
+        container.innerHTML = movements
+          .map((m) => {
+            const icon = m.type === "in" ? "📥" : "📤";
+            const color = m.type === "in" ? "#22c55e" : "#ef4444";
+            return `<li><span>${icon} <strong>${m.ref}</strong> x${m.qty} ${m.note ? "(" + m.note + ")" : ""}</span> <span style="color:#94a3b8; font-size:0.7rem;">${new Date(m.date).toLocaleString("fr-FR")}</span></li>`;
+          })
+          .join("");
+      }
+
+      // ===================================================================
+      // 7. MODAL - AJOUT / MODIFICATION
+      // ===================================================================
+      function openAddModal() {
+        document.getElementById("modalTitle").innerText = "Ajouter une pièce";
+        document.getElementById("editId").value = "";
+        ["fRef", "fLib", "fPrix", "fEmpl", "fQty", "fSeuil", "fDlc"].forEach(
+          (id) => (document.getElementById(id).value = ""),
+        );
+        document.getElementById("fQty").value = 0;
+        document.getElementById("fSeuil").value = 5;
+        document.getElementById("productModal").classList.add("open");
+      }
+
+      function openAddModalWithRef(ref) {
+        openAddModal();
+        document.getElementById("fRef").value = ref;
+      }
+
+      async function openEditModal(id) {
+        const products = await getAllProducts();
+        const product = products.find((p) => p.id === id);
+        if (!product) return;
+        document.getElementById("modalTitle").innerText = "Modifier la pièce";
+        document.getElementById("editId").value = id;
+        document.getElementById("fRef").value = product.ref || "";
+        document.getElementById("fLib").value = product.lib || "";
+        document.getElementById("fPrix").value = product.prix || "";
+        document.getElementById("fEmpl").value = product.emplacement || "";
+        document.getElementById("fQty").value = product.qty || 0;
+        document.getElementById("fSeuil").value = product.seuil || 5;
+        document.getElementById("fDlc").value = product.dlc || "";
+        document.getElementById("productModal").classList.add("open");
+      }
+
+      function closeModal() {
+        document.getElementById("productModal").classList.remove("open");
+      }
+
+      async function saveProduct() {
+        const id = document.getElementById("editId").value;
+        const ref = document.getElementById("fRef").value.trim();
+        const lib = document.getElementById("fLib").value.trim();
+        if (!ref || !lib) {
+          alert("Référence et Libellé obligatoires");
+          return;
+        }
+
+        const data = {
+          ref,
+          lib,
+          prix: parseFloat(document.getElementById("fPrix").value) || 0,
+          emplacement: document.getElementById("fEmpl").value.trim(),
+          qty: parseInt(document.getElementById("fQty").value) || 0,
+          seuil: parseInt(document.getElementById("fSeuil").value) || 5,
+          dlc: document.getElementById("fDlc").value || null,
+        };
+
+        if (id) {
+          // Modification
+          data.id = parseInt(id);
+          await dbPut("products", data);
+        } else {
+          // Vérifier doublon
+          const exist = await getProductByRef(ref);
+          if (exist) {
+            alert("Cette référence existe déjà !");
+            return;
+          }
+          await dbAdd("products", data);
+        }
+        closeModal();
+        refreshDashboard();
+        renderStockList(
+          document.getElementById("stockSearchInput")?.value || "",
+        );
+        // Si on est sur l'onglet scan, rafraîchir le résultat
+        if (
+          document.getElementById("scanResultContainer").style.display !==
+          "none"
+        ) {
+          await handleScanResult(ref);
+        }
+        alert("✅ Pièce sauvegardée !");
+      }
+
+      async function deleteProduct(id) {
+        if (!confirm("Supprimer définitivement cette pièce ?")) return;
+        await dbDelete("products", id);
+        refreshDashboard();
+        renderStockList(
+          document.getElementById("stockSearchInput")?.value || "",
+        );
+        alert("🗑️ Supprimée");
+      }
+
+      // ===================================================================
+      // 8. NAVIGATION
+      // ===================================================================
+      document.querySelectorAll("#bottom-nav .nav-item").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          document
+            .querySelectorAll("#bottom-nav .nav-item")
+            .forEach((b) => b.classList.remove("active"));
+          this.classList.add("active");
+          const pageId = this.dataset.page;
+          document
+            .querySelectorAll(".page-container")
+            .forEach((p) => p.classList.remove("active"));
+          document.getElementById(pageId).classList.add("active");
+
+          // Si on quitte la page scanner, arrêter la caméra
+          if (pageId !== "page-scanner" && isScannerRunning) {
+            toggleScanner(); // pour l'arrêter
+          }
+          // Si on arrive sur mouvements, refresh history
+          if (pageId === "page-mouvements") refreshHistory();
+          if (pageId === "page-stock")
+            renderStockList(
+              document.getElementById("stockSearchInput")?.value || "",
+            );
+          if (pageId === "page-dashboard") refreshDashboard();
+        });
+      });
+
+      // Recherche dans le stock
+      document
+        .getElementById("stockSearchInput")
+        .addEventListener("input", function () {
+          renderStockList(this.value);
+        });
+
+      // ===================================================================
+      // 9. CSV - ODOO BRIDGE
+      // ===================================================================
+      function escapeCSV(str) {
+        if (str === null || str === undefined) return "";
+        if (
+          typeof str === "string" &&
+          (str.includes(",") || str.includes('"') || str.includes("\n"))
+        ) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      }
+
+      async function exportCSV() {
+        const products = await getAllProducts();
+        if (products.length === 0) {
+          alert("Stock vide, rien à exporter.");
+          return;
+        }
+        // Colonnes: REFERENCE, LIBELLE, PRIX D'ACHAT, EMPLACEMENT, QUANTITE, SEUIL, DLC
+        let header =
+          'REFERENCE,LIBELLE,"PRIX D\'ACHAT",EMPLACEMENT,QUANTITE,SEUIL,DLC\n';
+        const rows = products.map((p) => {
+          return [
+            escapeCSV(p.ref),
+            escapeCSV(p.lib),
+            escapeCSV(p.prix),
+            escapeCSV(p.emplacement),
+            escapeCSV(p.qty),
+            escapeCSV(p.seuil),
+            escapeCSV(p.dlc),
+          ].join(",");
+        });
+        const csvContent = header + rows.join("\n");
+        const blob = new Blob(["\uFEFF" + csvContent], {
+          type: "text/csv;charset=utf-8;",
+        }); // BOM pour Excel
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "UNITED_MOTORS_export_odoo.csv";
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+
+      async function importCSV() {
+        const fileInput = document.getElementById("csvFileInput");
+        const resultDiv = document.getElementById("importResult");
+        if (!fileInput.files || fileInput.files.length === 0) {
+          resultDiv.innerHTML =
+            '<span style="color:#f59e0b;">Veuillez sélectionner un fichier CSV.</span>';
+          return;
+        }
+        const file = fileInput.files[0];
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "");
+        if (lines.length < 2) {
+          resultDiv.innerHTML =
+            '<span style="color:#ef4444;">Fichier vide ou invalide.</span>';
+          return;
+        }
+
+        // Extraire les en-têtes
+        const headers = lines[0]
+          .split(",")
+          .map((h) => h.replace(/^"|"$/g, "").trim().toUpperCase());
+        // Map des colonnes
+        const map = {
+          REFERENCE: "ref",
+          REF: "ref",
+          CODE: "ref",
+          LIBELLE: "lib",
+          LIB: "lib",
+          DESCRIPTION: "lib",
+          "PRIX D'ACHAT": "prix",
+          PRIX: "prix",
+          'PRIX D"ACHAT': "prix",
+          EMPLACEMENT: "emplacement",
+          LOCATION: "emplacement",
+          QUANTITE: "qty",
+          QTE: "qty",
+          QUANTITY: "qty",
+          SEUIL: "seuil",
+          "SEUIL ALERTE": "seuil",
+          DLC: "dlc",
+          "DATE PEREMPTION": "dlc",
+          EXPIRY: "dlc",
+        };
+        // Trouver les index
+        const idxRef = headers.findIndex((h) =>
+          ["REFERENCE", "REF", "CODE"].includes(h),
+        );
+        const idxLib = headers.findIndex((h) =>
+          ["LIBELLE", "LIB", "DESCRIPTION"].includes(h),
+        );
+        const idxPrix = headers.findIndex((h) =>
+          ["PRIX D'ACHAT", "PRIX", 'PRIX D"ACHAT'].includes(h),
+        );
+        const idxEmpl = headers.findIndex((h) =>
+          ["EMPLACEMENT", "LOCATION"].includes(h),
+        );
+        const idxQty = headers.findIndex((h) =>
+          ["QUANTITE", "QTE", "QUANTITY"].includes(h),
+        );
+        const idxSeuil = headers.findIndex((h) =>
+          ["SEUIL", "SEUIL ALERTE"].includes(h),
+        );
+        const idxDlc = headers.findIndex((h) =>
+          ["DLC", "DATE PEREMPTION", "EXPIRY"].includes(h),
+        );
+
+        if (idxRef === -1 || idxLib === -1) {
+          resultDiv.innerHTML =
+            '<span style="color:#ef4444;">Colonnes "REFERENCE" et "LIBELLE" obligatoires.</span>';
+          return;
+        }
+
+        let imported = 0,
+          updated = 0;
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i]
+            .split(",")
+            .map((v) => v.replace(/^"|"$/g, "").trim());
+          const ref = values[idxRef] || "";
+          const lib = values[idxLib] || "";
+          if (!ref || !lib) continue;
+          const prix = parseFloat(values[idxPrix]) || 0;
+          const emplacement = values[idxEmpl] || "";
+          const qty = parseInt(values[idxQty]) || 0;
+          const seuil = parseInt(values[idxSeuil]) || 5;
+          const dlc = values[idxDlc] || null;
+
+          const existing = await getProductByRef(ref);
+          if (existing) {
+            // Mettre à jour sans écraser les données utilisateur? On écrase tout sauf si valeur vide
+            existing.lib = lib || existing.lib;
+            existing.prix = prix || existing.prix;
+            existing.emplacement = emplacement || existing.emplacement;
+            existing.qty = qty;
+            existing.seuil = seuil || existing.seuil;
+            existing.dlc = dlc || existing.dlc;
+            await dbPut("products", existing);
+            updated++;
+          } else {
+            await dbAdd("products", {
+              ref,
+              lib,
+              prix,
+              emplacement,
+              qty,
+              seuil,
+              dlc,
+            });
+            imported++;
+          }
+        }
+        resultDiv.innerHTML = `<span style="color:#22c55e;">✅ Import terminé : ${imported} créées, ${updated} mises à jour.</span>`;
+        refreshDashboard();
+        renderStockList(
+          document.getElementById("stockSearchInput")?.value || "",
+        );
+      }
+
+      // ===================================================================
+      // 10. RÉINITIALISATION
+      // ===================================================================
+      async function clearAllData() {
+        const products = await getAllProducts();
+        for (let p of products) await dbDelete("products", p.id);
+        const movements = await dbGetAll("movements");
+        for (let m of movements) await dbDelete("movements", m.id);
+        refreshDashboard();
+        renderStockList("");
+        document.getElementById("historyList").innerHTML =
+          '<li style="color:#64748b; text-align:center; padding:15px;">Aucun historique</li>';
+        alert("🧹 Base réinitialisée.");
+      }
+
+      // ===================================================================
+      // 11. INIT
+      // ===================================================================
+      (async function init() {
+        await openDB();
+        await refreshDashboard();
+        await renderStockList();
+        await refreshHistory();
+        // Gestion du modal en cliquant à l'extérieur
+        document
+          .getElementById("productModal")
+          .addEventListener("click", function (e) {
+            if (e.target === this) closeModal();
+          });
+      })();
+    </script>
+  </body>
+</html>
