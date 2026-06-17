@@ -1,1430 +1,688 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
-    <title>UNITED MOTORS STOCK</title>
-    <!-- Librairie Scanner -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>UNITED MOTORS STOCK V2</title>
+    <!-- LIBRAIRIES -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <!-- Font Awesome pour les icônes -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-      /* ================= RESET & THEME ================= */
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        font-family: "Segoe UI", Roboto, system-ui, sans-serif;
-      }
-      body {
-        background: #0b1120;
-        color: #e2e8f0;
-        height: 100vh;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
+        /* =========== THEME PROFESSIONNEL ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background: #0b1120; color: #e2e8f0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        #app-header {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            padding: 12px 20px;
+            border-bottom: 2px solid #eab308;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        #app-header h1 { font-size: 1.4rem; font-weight: 700; }
+        #app-header h1 span { color: #eab308; }
+        .header-badge { background: #eab308; color: #0b1120; padding: 4px 14px; border-radius: 30px; font-size: 0.7rem; font-weight: bold; }
+        .page-container { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 80px; display: none; }
+        .page-container.active { display: block; }
 
-      /* ================= HEADER ================= */
-      #app-header {
-        background: linear-gradient(135deg, #0f172a, #1e293b);
-        padding: 15px 20px 10px 20px;
-        border-bottom: 2px solid #eab308;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-shrink: 0;
-        z-index: 10;
-      }
-      #app-header h1 {
-        font-size: 1.4rem;
-        font-weight: 700;
-        letter-spacing: 1px;
-      }
-      #app-header h1 span {
-        color: #eab308;
-      }
-      #app-header .header-badge {
-        background: #eab308;
-        color: #0b1120;
-        padding: 4px 12px;
-        border-radius: 30px;
-        font-size: 0.7rem;
-        font-weight: bold;
-      }
+        /* BOTTOM NAV */
+        #bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #0f172a; border-top: 1px solid #334155;
+            display: flex; justify-content: space-around;
+            padding: 8px 0 env(safe-area-inset-bottom) 0; z-index: 20;
+            backdrop-filter: blur(5px);
+        }
+        #bottom-nav .nav-item {
+            display: flex; flex-direction: column; align-items: center;
+            color: #64748b; font-size: 0.6rem; padding: 5px 10px;
+            background: transparent; border: none; cursor: pointer;
+        }
+        #bottom-nav .nav-item i { font-size: 1.6rem; }
+        #bottom-nav .nav-item.active { color: #eab308; }
 
-      /* ================= PAGES (contenu principal) ================= */
-      .page-container {
-        flex: 1;
-        overflow-y: auto;
-        padding: 15px;
-        padding-bottom: 80px; /* espace pour la nav du bas */
-        display: none;
-      }
-      .page-container.active {
-        display: block;
-      }
+        /* CARTES */
+        .card { background: #1e293b; border-radius: 16px; padding: 16px; margin-bottom: 15px; border: 1px solid #334155; }
+        .card-title { font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 12px; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .stat-item { background: #0b1120; padding: 14px; border-radius: 12px; text-align: center; border-left: 4px solid #eab308; }
+        .stat-item .number { font-size: 2rem; font-weight: 700; color: white; }
+        .stat-item .label { font-size: 0.7rem; color: #94a3b8; }
+        .stat-item.danger { border-left-color: #ef4444; }
+        .stat-item.warning { border-left-color: #f59e0b; }
 
-      /* ================= BOTTOM NAV ================= */
-      #bottom-nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: #0f172a;
-        border-top: 1px solid #334155;
-        display: flex;
-        justify-content: space-around;
-        padding: 8px 0 env(safe-area-inset-bottom) 0;
-        z-index: 20;
-        backdrop-filter: blur(5px);
-        flex-shrink: 0;
-      }
-      #bottom-nav .nav-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        color: #64748b;
-        font-size: 0.6rem;
-        padding: 5px 10px;
-        transition: 0.2s;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-      }
-      #bottom-nav .nav-item i {
-        font-size: 1.6rem;
-        margin-bottom: 2px;
-        transition: 0.2s;
-      }
-      #bottom-nav .nav-item.active {
-        color: #eab308;
-      }
-      #bottom-nav .nav-item.active i {
-        transform: scale(1.1);
-        text-shadow: 0 0 15px rgba(234, 179, 8, 0.4);
-      }
+        .search-bar {
+            width: 100%; padding: 14px 18px; border-radius: 50px;
+            border: 1px solid #334155; background: #0b1120; color: white;
+            font-size: 1rem; outline: none;
+        }
+        .search-bar:focus { border-color: #eab308; }
+        .btn {
+            padding: 12px 25px; border: none; border-radius: 50px;
+            font-weight: 700; font-size: 0.9rem; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: 0.2s;
+        }
+        .btn-primary { background: #eab308; color: #0b1120; box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3); }
+        .btn-primary:hover { transform: scale(1.02); filter: brightness(1.1); }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-success { background: #22c55e; color: white; }
+        .btn-sm { padding: 8px 16px; font-size: 0.8rem; }
+        .w100 { width: 100%; }
 
-      /* ================= CARTES & COMPOSANTS ================= */
-      .card {
-        background: #1e293b;
-        border-radius: 16px;
-        padding: 16px;
-        margin-bottom: 15px;
-        border: 1px solid #334155;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      }
-      .card-title {
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #94a3b8;
-        margin-bottom: 12px;
-      }
+        .stock-item {
+            display: grid;
+            grid-template-columns: 60px 2fr 1fr 1fr 0.5fr;
+            gap: 8px; background: #0b1120; padding: 10px 12px;
+            border-radius: 12px; margin-bottom: 8px; align-items: center;
+            border-left: 4px solid #334155;
+        }
+        .stock-item.low { border-left-color: #ef4444; }
+        .stock-item .img-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; background: #1e293b; }
+        .stock-item .ref { font-weight: bold; font-size: 0.75rem; color: #eab308; }
+        .stock-item .lib { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-      .stat-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
-      .stat-item {
-        background: #0b1120;
-        padding: 14px;
-        border-radius: 12px;
-        text-align: center;
-        border-left: 4px solid #eab308;
-      }
-      .stat-item .number {
-        font-size: 2rem;
-        font-weight: 700;
-        color: white;
-      }
-      .stat-item .label {
-        font-size: 0.7rem;
-        color: #94a3b8;
-        margin-top: 4px;
-      }
-      .stat-item.danger {
-        border-left-color: #ef4444;
-      }
-      .stat-item.warning {
-        border-left-color: #f59e0b;
-      }
+        /* SCANNER */
+        #reader { width: 100%; max-width: 500px; margin: 0 auto; border-radius: 20px; overflow: hidden; }
+        .scan-result-box { margin-top: 15px; background: #0b1120; padding: 15px; border-radius: 16px; border: 1px solid #334155; }
+        .suggestion-item { padding: 10px; background: #1e293b; margin: 5px 0; border-radius: 8px; cursor: pointer; border-left: 3px solid #eab308; }
+        .suggestion-item:hover { background: #334155; }
 
-      .alert-list {
-        list-style: none;
-      }
-      .alert-list li {
-        display: flex;
-        justify-content: space-between;
-        padding: 10px 0;
-        border-bottom: 1px solid #334155;
-        font-size: 0.9rem;
-      }
-      .alert-list li .badge {
-        background: #ef4444;
-        color: white;
-        padding: 2px 10px;
-        border-radius: 30px;
-        font-size: 0.7rem;
-        font-weight: bold;
-      }
-      .alert-list li .badge.warning {
-        background: #f59e0b;
-      }
+        /* MODAL */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center;
+            z-index: 100; padding: 20px;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: #1e293b; border-radius: 24px; padding: 25px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; border: 1px solid #eab308; }
+        .modal-box h2 { color: #eab308; margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 12px 15px; border-radius: 12px;
+            border: 1px solid #334155; background: #0b1120; color: white;
+            font-size: 1rem;
+        }
+        .form-group input:focus { border-color: #eab308; outline: none; }
+        .form-group .image-preview { width: 100%; max-height: 150px; object-fit: contain; border-radius: 12px; background: #0b1120; margin-top: 5px; }
 
-      /* ================= TABLEAU STOCK ================= */
-      .search-bar {
-        width: 100%;
-        padding: 14px 18px;
-        border-radius: 50px;
-        border: 1px solid #334155;
-        background: #0b1120;
-        color: white;
-        font-size: 1rem;
-        margin-bottom: 15px;
-        outline: none;
-        transition: 0.3s;
-      }
-      .search-bar:focus {
-        border-color: #eab308;
-      }
+        .flex { display: flex; gap: 10px; flex-wrap: wrap; }
+        .text-center { text-align: center; }
+        .mb-10 { margin-bottom: 10px; }
+        .mt-10 { margin-top: 10px; }
 
-      .stock-item {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr 0.5fr;
-        gap: 8px;
-        background: #0b1120;
-        padding: 12px 14px;
-        border-radius: 12px;
-        margin-bottom: 8px;
-        align-items: center;
-        border-left: 4px solid #334155;
-      }
-      .stock-item.low {
-        border-left-color: #ef4444;
-      }
-      .stock-item .ref {
-        font-weight: bold;
-        font-size: 0.8rem;
-        color: #eab308;
-      }
-      .stock-item .lib {
-        font-size: 0.9rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .stock-item .qty {
-        font-weight: bold;
-        text-align: center;
-      }
-      .stock-item .actions i {
-        margin-left: 8px;
-        color: #94a3b8;
-        cursor: pointer;
-        transition: 0.2s;
-        font-size: 1.1rem;
-      }
-      .stock-item .actions i:hover {
-        color: #eab308;
-      }
-
-      /* ================= SCANNER ================= */
-      #reader {
-        width: 100%;
-        max-width: 500px;
-        margin: 0 auto;
-        border-radius: 20px;
-        overflow: hidden;
-      }
-      #scanner-controls {
-        text-align: center;
-        margin-top: 15px;
-      }
-      .btn {
-        padding: 14px 30px;
-        border: none;
-        border-radius: 50px;
-        font-weight: 700;
-        font-size: 1rem;
-        background: #334155;
-        color: white;
-        cursor: pointer;
-        transition: 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .btn-primary {
-        background: #eab308;
-        color: #0b1120;
-        box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3);
-      }
-      .btn-primary:hover {
-        transform: scale(1.02);
-        filter: brightness(1.1);
-      }
-      .btn-danger {
-        background: #ef4444;
-      }
-      .btn-success {
-        background: #22c55e;
-      }
-      .btn-sm {
-        padding: 8px 18px;
-        font-size: 0.8rem;
-      }
-
-      .scan-result-box {
-        margin-top: 15px;
-        background: #0b1120;
-        padding: 15px;
-        border-radius: 16px;
-        border: 1px solid #334155;
-      }
-
-      /* ================= MODAL ================= */
-      .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(4px);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 100;
-        padding: 20px;
-      }
-      .modal-overlay.open {
-        display: flex;
-      }
-      .modal-box {
-        background: #1e293b;
-        border-radius: 24px;
-        padding: 25px;
-        max-width: 500px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        border: 1px solid #eab308;
-      }
-      .modal-box h2 {
-        margin-bottom: 20px;
-        color: #eab308;
-      }
-      .form-group {
-        margin-bottom: 15px;
-      }
-      .form-group label {
-        display: block;
-        font-size: 0.8rem;
-        color: #94a3b8;
-        margin-bottom: 5px;
-      }
-      .form-group input,
-      .form-group select {
-        width: 100%;
-        padding: 12px 15px;
-        border-radius: 12px;
-        border: 1px solid #334155;
-        background: #0b1120;
-        color: white;
-        font-size: 1rem;
-      }
-      .form-group input:focus {
-        border-color: #eab308;
-        outline: none;
-      }
-      .modal-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 20px;
-        justify-content: flex-end;
-      }
-
-      /* ================= UTILITIES ================= */
-      .text-center {
-        text-align: center;
-      }
-      .mt-10 {
-        margin-top: 10px;
-      }
-      .mb-10 {
-        margin-bottom: 10px;
-      }
-      .flex {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .w100 {
-        width: 100%;
-      }
-
-      /* ================= SCROLLBAR ================= */
-      ::-webkit-scrollbar {
-        width: 4px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #0b1120;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #eab308;
-        border-radius: 10px;
-      }
+        /* SCROLL */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #0b1120; }
+        ::-webkit-scrollbar-thumb { background: #eab308; border-radius: 10px; }
     </style>
-  </head>
-  <body>
-    <!-- ================= HEADER ================= -->
+</head>
+<body>
+
     <header id="app-header">
-      <h1><span>UNITED</span> MOTORS</h1>
-      <div class="header-badge"><i class="fas fa-wrench"></i> STOCK PRO</div>
+        <h1><span>UNITED</span> MOTORS</h1>
+        <div class="header-badge"><i class="fas fa-wrench"></i> STOCK PRO V2</div>
     </header>
 
-    <!-- ================= PAGE DASHBOARD ================= -->
+    <!-- ========= PAGE DASHBOARD ========= -->
     <div id="page-dashboard" class="page-container active">
-      <div class="stat-grid">
-        <div class="stat-item">
-          <div class="number" id="totalItems">0</div>
-          <div class="label">Références</div>
+        <div class="stat-grid">
+            <div class="stat-item"><div class="number" id="totalItems">0</div><div class="label">Références</div></div>
+            <div class="stat-item"><div class="number" id="totalValue">0€</div><div class="label">Valeur Stock</div></div>
+            <div class="stat-item danger"><div class="number" id="lowStockCount">0</div><div class="label">⚠️ Stock bas</div></div>
+            <div class="stat-item warning"><div class="number" id="expiryCount">0</div><div class="label">⏳ DLC < 30j</div></div>
         </div>
-        <div class="stat-item">
-          <div class="number" id="totalValue">0€</div>
-          <div class="label">Valeur Stock</div>
-        </div>
-        <div class="stat-item danger">
-          <div class="number" id="lowStockCount">0</div>
-          <div class="label">⚠️ Rupture / Seuil bas</div>
-        </div>
-        <div class="stat-item warning">
-          <div class="number" id="expiryCount">0</div>
-          <div class="label">⏳ DLC < 30 jours</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-exclamation-triangle" style="color: #eab308"></i>
-          Alertes critiques
-        </div>
-        <ul class="alert-list" id="alertList">
-          <li style="color: #64748b; text-align: center; padding: 15px">
-            Aucune alerte, tout est sous contrôle 🚀
-          </li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-clock"></i> Derniers mouvements
-        </div>
-        <ul class="alert-list" id="lastMovements">
-          <li style="color: #64748b; text-align: center; padding: 15px">
-            Aucun mouvement enregistré
-          </li>
-        </ul>
-      </div>
+        <div class="card"><div class="card-title"><i class="fas fa-exclamation-triangle" style="color:#eab308;"></i> Alertes</div><ul class="alert-list" id="alertList"><li style="color:#22c55e;">✅ Tout est vert</li></ul></div>
     </div>
 
-    <!-- ================= PAGE SCANNER ================= -->
+    <!-- ========= PAGE SCANNER ========= -->
     <div id="page-scanner" class="page-container">
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-camera"></i> Scanner / Recherche
+        <div class="card"><div class="card-title"><i class="fas fa-camera"></i> Scan & Reconnaissance IA (Fuzzy)</div>
+            <input type="text" id="manualScanInput" class="search-bar" placeholder="🔍 Scannez ou tapez (ex: ABC-123)..." autofocus>
         </div>
-        <input
-          type="text"
-          id="manualScanInput"
-          class="search-bar"
-          placeholder="🔍 Ou tapez référence / libellé..."
-          autofocus
-        />
-      </div>
-
-      <div id="reader"></div>
-      <div id="scanner-controls">
-        <button id="toggleScannerBtn" class="btn btn-primary">
-          <i class="fas fa-play"></i> Démarrer le scan
-        </button>
-      </div>
-
-      <!-- Résultat du scan -->
-      <div
-        id="scanResultContainer"
-        class="scan-result-box"
-        style="display: none"
-      >
-        <div id="scanResultContent"></div>
-      </div>
+        <div id="reader"></div>
+        <div id="scanner-controls" class="text-center mt-10">
+            <button id="toggleScannerBtn" class="btn btn-primary"><i class="fas fa-play"></i> Démarrer le scan</button>
+        </div>
+        <div id="scanResultContainer" class="scan-result-box" style="display:none;">
+            <div id="scanResultContent"></div>
+        </div>
     </div>
 
-    <!-- ================= PAGE STOCK (LISTE) ================= -->
+    <!-- ========= PAGE STOCK ========= -->
     <div id="page-stock" class="page-container">
-      <div class="flex mb-10">
-        <input
-          type="text"
-          id="stockSearchInput"
-          class="search-bar"
-          placeholder="🔍 Filtrer dans le stock..."
-          style="margin-bottom: 0"
-        />
-        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
-          <i class="fas fa-plus"></i> Ajouter
-        </button>
-      </div>
-      <div id="stockListContainer"></div>
+        <div class="flex mb-10">
+            <input type="text" id="stockSearchInput" class="search-bar" placeholder="🔍 Filtrer..." style="margin-bottom:0;">
+            <button class="btn btn-primary btn-sm" onclick="openAddModal()"><i class="fas fa-plus"></i> Ajouter</button>
+        </div>
+        <div id="stockListContainer"></div>
     </div>
 
-    <!-- ================= PAGE MOUVEMENTS ================= -->
+    <!-- ========= PAGE MOUVEMENTS ========= -->
     <div id="page-mouvements" class="page-container">
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-arrows-alt-h"></i> Entrée / Sortie rapide
+        <div class="card">
+            <div class="card-title"><i class="fas fa-arrows-alt-h"></i> Entrée / Sortie</div>
+            <div class="form-group"><label>Référence</label><input type="text" id="movementRef" class="search-bar" placeholder="Ref scannée"></div>
+            <div class="form-group"><label>Quantité</label><input type="number" id="movementQty" value="1" min="1" style="width:100%; padding:12px; border-radius:12px; border:1px solid #334155; background:#0b1120; color:white;"></div>
+            <div class="flex" style="justify-content:space-between;">
+                <button class="btn btn-success" onclick="processMovement('in')"><i class="fas fa-arrow-down"></i> Réception</button>
+                <button class="btn btn-danger" onclick="processMovement('out')"><i class="fas fa-arrow-up"></i> Sortie Atelier</button>
+            </div>
         </div>
-        <div class="form-group">
-          <label>Référence de la pièce</label>
-          <input
-            type="text"
-            id="movementRef"
-            placeholder="Ex: OEM123 ou scannez via l'onglet scanner"
-            class="search-bar"
-            style="margin-bottom: 10px"
-          />
-        </div>
-        <div class="form-group">
-          <label>Quantité</label>
-          <input
-            type="number"
-            id="movementQty"
-            value="1"
-            min="1"
-            style="
-              width: 100%;
-              padding: 12px;
-              border-radius: 12px;
-              border: 1px solid #334155;
-              background: #0b1120;
-              color: white;
-              font-size: 1rem;
-            "
-          />
-        </div>
-        <div class="flex" style="justify-content: space-between">
-          <button class="btn btn-success" onclick="processMovement('in')">
-            <i class="fas fa-arrow-down"></i> Réception (Entrée)
-          </button>
-          <button class="btn btn-danger" onclick="processMovement('out')">
-            <i class="fas fa-arrow-up"></i> Sortie Atelier
-          </button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-history"></i> Historique (20 derniers)
-        </div>
-        <ul class="alert-list" id="historyList">
-          <li style="color: #64748b; text-align: center; padding: 15px">
-            Aucun historique
-          </li>
-        </ul>
-      </div>
+        <div class="card"><div class="card-title"><i class="fas fa-history"></i> Historique</div><ul class="alert-list" id="historyList"><li style="color:#64748b;">Aucun mouvement</li></ul></div>
     </div>
 
-    <!-- ================= PAGE SYNC ODOO ================= -->
+    <!-- ========= PAGE ODOO / EXCEL / PDF ========= -->
     <div id="page-sync" class="page-container">
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-file-export"></i> Exporter vers Odoo (CSV)
+        <div class="card">
+            <div class="card-title"><i class="fas fa-file-excel"></i> Exporter vers Excel (Odoo)</div>
+            <button class="btn btn-primary w100" onclick="exportExcel()"><i class="fas fa-download"></i> Télécharger .xlsx</button>
         </div>
-        <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px">
-          Télécharge un fichier CSV avec : REFERENCE, LIBELLE, PRIX D'ACHAT,
-          EMPLACEMENT, QUANTITE, SEUIL, DLC
-        </p>
-        <button class="btn btn-primary w100" onclick="exportCSV()">
-          <i class="fas fa-download"></i> Télécharger le CSV
-        </button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-file-import"></i> Importer depuis Odoo (CSV)
+        <div class="card">
+            <div class="card-title"><i class="fas fa-file-pdf"></i> Exporter inventaire PDF</div>
+            <button class="btn btn-primary w100" onclick="exportPDF()"><i class="fas fa-file-pdf"></i> Générer le rapport PDF</button>
         </div>
-        <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px">
-          Importez votre export Odoo. Les colonnes doivent correspondre (ou
-          seront mappées).
-        </p>
-        <input
-          type="file"
-          id="csvFileInput"
-          accept=".csv"
-          style="color: white; margin-bottom: 15px; display: block; width: 100%"
-        />
-        <button class="btn btn-primary w100" onclick="importCSV()">
-          <i class="fas fa-upload"></i> Importer et fusionner
-        </button>
-        <div id="importResult" style="margin-top: 15px"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-database"></i> Base de données
+        <div class="card">
+            <div class="card-title"><i class="fas fa-file-import"></i> Importer depuis Excel (Odoo)</div>
+            <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="color:white; margin-bottom:15px; width:100%;">
+            <button class="btn btn-primary w100" onclick="importExcel()"><i class="fas fa-upload"></i> Importer et fusionner</button>
+            <div id="importResult" class="mt-10"></div>
         </div>
-        <button
-          class="btn btn-danger w100"
-          onclick="
-            if (confirm('Supprimer TOUT le stock ?')) {
-              clearAllData();
-            }
-          "
-        >
-          <i class="fas fa-trash"></i> Réinitialiser le stock
-        </button>
-      </div>
+        <div class="card">
+            <div class="card-title"><i class="fas fa-database"></i> Base</div>
+            <button class="btn btn-danger w100" onclick="if(confirm('Tout supprimer ?')){clearAllData();}"><i class="fas fa-trash"></i> Réinitialiser</button>
+        </div>
     </div>
 
-    <!-- ================= BOTTOM NAVIGATION ================= -->
+    <!-- ========= BOTTOM NAV ========= -->
     <nav id="bottom-nav">
-      <button class="nav-item active" data-page="page-dashboard">
-        <i class="fas fa-chart-pie"></i> Dashboard
-      </button>
-      <button class="nav-item" data-page="page-scanner">
-        <i class="fas fa-qrcode"></i> Scanner
-      </button>
-      <button class="nav-item" data-page="page-stock">
-        <i class="fas fa-boxes"></i> Stock
-      </button>
-      <button class="nav-item" data-page="page-mouvements">
-        <i class="fas fa-exchange-alt"></i> Mouvements
-      </button>
-      <button class="nav-item" data-page="page-sync">
-        <i class="fas fa-cloud-upload-alt"></i> Odoo
-      </button>
+        <button class="nav-item active" data-page="page-dashboard"><i class="fas fa-chart-pie"></i> Dashboard</button>
+        <button class="nav-item" data-page="page-scanner"><i class="fas fa-qrcode"></i> Scanner</button>
+        <button class="nav-item" data-page="page-stock"><i class="fas fa-boxes"></i> Stock</button>
+        <button class="nav-item" data-page="page-mouvements"><i class="fas fa-exchange-alt"></i> Mouvements</button>
+        <button class="nav-item" data-page="page-sync"><i class="fas fa-cloud-upload-alt"></i> Odoo</button>
     </nav>
 
-    <!-- ================= MODAL AJOUT / EDITION ================= -->
+    <!-- ========= MODAL ========= -->
     <div class="modal-overlay" id="productModal">
-      <div class="modal-box">
-        <h2 id="modalTitle">Ajouter une pièce</h2>
-        <input type="hidden" id="editId" />
-        <div class="form-group">
-          <label>RÉFÉRENCE *</label
-          ><input id="fRef" placeholder="Réf fournisseur / OEM" />
+        <div class="modal-box">
+            <h2 id="modalTitle">Ajouter une pièce</h2>
+            <input type="hidden" id="editId">
+            <div class="form-group"><label>RÉFÉRENCE *</label><input id="fRef" placeholder="Réf OEM"></div>
+            <div class="form-group"><label>LIBELLÉ *</label><input id="fLib" placeholder="Nom"></div>
+            <div class="form-group"><label>PRIX (€)</label><input id="fPrix" type="number" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label>EMPLACEMENT</label><input id="fEmpl" placeholder="Zone A3"></div>
+            <div class="form-group"><label>QUANTITÉ</label><input id="fQty" type="number" value="0"></div>
+            <div class="form-group"><label>SEUIL</label><input id="fSeuil" type="number" value="5"></div>
+            <div class="form-group"><label>DLC</label><input id="fDlc" type="date"></div>
+            <div class="form-group">
+                <label>PHOTO (cliquez pour prendre/choisir)</label>
+                <input type="file" id="fImage" accept="image/*" capture="environment" style="color:white; padding:5px;">
+                <img id="imagePreview" class="image-preview" style="display:none;" />
+            </div>
+            <div class="modal-actions flex" style="justify-content:flex-end;">
+                <button class="btn" onclick="closeModal()">Annuler</button>
+                <button class="btn btn-primary" onclick="saveProduct()"><i class="fas fa-save"></i> Sauvegarder</button>
+            </div>
         </div>
-        <div class="form-group">
-          <label>LIBELLÉ *</label
-          ><input id="fLib" placeholder="Nom de la pièce" />
-        </div>
-        <div class="form-group">
-          <label>PRIX D'ACHAT (€)</label
-          ><input id="fPrix" type="number" step="0.01" placeholder="0.00" />
-        </div>
-        <div class="form-group">
-          <label>EMPLACEMENT</label
-          ><input id="fEmpl" placeholder="Zone A3 / B2" />
-        </div>
-        <div class="form-group">
-          <label>QUANTITÉ</label
-          ><input id="fQty" type="number" value="0" min="0" />
-        </div>
-        <div class="form-group">
-          <label>SEUIL D'ALERTE</label
-          ><input id="fSeuil" type="number" value="5" min="0" />
-        </div>
-        <div class="form-group">
-          <label>DLC (Date limite)</label><input id="fDlc" type="date" />
-        </div>
-        <div class="modal-actions">
-          <button class="btn" onclick="closeModal()">Annuler</button>
-          <button class="btn btn-primary" onclick="saveProduct()">
-            <i class="fas fa-save"></i> Sauvegarder
-          </button>
-        </div>
-      </div>
     </div>
 
     <script>
-      // ===================================================================
-      // 1. INDEXEDDB - Gestion de la base locale
-      // ===================================================================
-      const DB_NAME = "UnitedMotorsDB";
-      const DB_VERSION = 3;
-      let db = null;
-
-      function openDB() {
-        return new Promise((resolve, reject) => {
-          const request = indexedDB.open(DB_NAME, DB_VERSION);
-          request.onupgradeneeded = (e) => {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains("products")) {
-              const store = db.createObjectStore("products", {
-                keyPath: "id",
-                autoIncrement: true,
-              });
-              store.createIndex("ref", "ref", { unique: false });
-            }
-            if (!db.objectStoreNames.contains("movements")) {
-              const store = db.createObjectStore("movements", {
-                keyPath: "id",
-                autoIncrement: true,
-              });
-              store.createIndex("ref", "ref", { unique: false });
-              store.createIndex("date", "date", { unique: false });
-            }
-          };
-          request.onsuccess = (e) => {
-            db = e.target.result;
-            resolve(db);
-          };
-          request.onerror = (e) => reject(e.target.error);
-        });
-      }
-
-      function dbAdd(storeName, data) {
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(storeName, "readwrite");
-          const store = tx.objectStore(storeName);
-          const req = store.add(data);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-      }
-
-      function dbPut(storeName, data) {
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(storeName, "readwrite");
-          const store = tx.objectStore(storeName);
-          const req = store.put(data);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-      }
-
-      function dbGetAll(storeName) {
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(storeName, "readonly");
-          const store = tx.objectStore(storeName);
-          const req = store.getAll();
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-      }
-
-      function dbGetByIndex(storeName, indexName, value) {
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(storeName, "readonly");
-          const store = tx.objectStore(storeName);
-          const index = store.index(indexName);
-          const req = index.get(value);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-      }
-
-      function dbDelete(storeName, id) {
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(storeName, "readwrite");
-          const store = tx.objectStore(storeName);
-          const req = store.delete(id);
-          req.onsuccess = () => resolve();
-          req.onerror = () => reject(req.error);
-        });
-      }
-
-      function dbGetAllByIndex(storeName, indexName, value) {
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(storeName, "readonly");
-          const store = tx.objectStore(storeName);
-          const index = store.index(indexName);
-          const req = index.getAll(value);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-      }
-
-      // ===================================================================
-      // 2. FONCTIONS MÉTIER
-      // ===================================================================
-      async function getAllProducts() {
-        if (!db) await openDB();
-        return await dbGetAll("products");
-      }
-
-      async function getProductByRef(ref) {
-        if (!db) await openDB();
-        const all = await dbGetAll("products");
-        return all.find(
-          (p) => p.ref && p.ref.toUpperCase() === ref.toUpperCase(),
-        );
-      }
-
-      async function addMovement(ref, type, qty, note = "") {
-        const mov = { ref, type, qty, date: new Date().toISOString(), note };
-        await dbAdd("movements", mov);
-      }
-
-      async function getLastMovements(limit = 20) {
-        const all = await dbGetAll("movements");
-        return all
-          .sort((a, b) => new Date(b.date) - new Date(a.date))
-          .slice(0, limit);
-      }
-
-      // ===================================================================
-      // 3. UI - RENDU
-      // ===================================================================
-      async function refreshDashboard() {
-        const products = await getAllProducts();
-        const totalItems = products.length;
-        let totalValue = 0;
-        let lowStock = 0;
-        let expiring = 0;
-        const alerts = [];
-
-        const today = new Date();
-        const thirtyDays = new Date();
-        thirtyDays.setDate(today.getDate() + 30);
-
-        products.forEach((p) => {
-          totalValue += (parseFloat(p.prix) || 0) * (parseInt(p.qty) || 0);
-          const qty = parseInt(p.qty) || 0;
-          const seuil = parseInt(p.seuil) || 0;
-          if (qty <= 0 || qty <= seuil) {
-            lowStock++;
-            alerts.push({
-              ref: p.ref,
-              lib: p.lib,
-              msg: `Stock bas (${qty} restant)`,
-              type: "danger",
+        // ===================================================================
+        // 1. INDEXEDDB
+        // ===================================================================
+        const DB_NAME = 'UnitedMotorsV2';
+        let db = null;
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, 4);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('products')) {
+                        const store = db.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('ref', 'ref', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('movements')) {
+                        db.createObjectStore('movements', { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+                req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+                req.onerror = (e) => reject(e.target.error);
             });
-          }
-          if (p.dlc) {
-            const dlcDate = new Date(p.dlc);
-            if (dlcDate <= thirtyDays && dlcDate >= today) {
-              expiring++;
-              alerts.push({
-                ref: p.ref,
-                lib: p.lib,
-                msg: `DLC dans < 30j (${p.dlc})`,
-                type: "warning",
-              });
-            } else if (dlcDate < today) {
-              expiring++;
-              alerts.push({
-                ref: p.ref,
-                lib: p.lib,
-                msg: `DLC EXPIRÉE (${p.dlc})`,
-                type: "danger",
-              });
+        }
+        function dbAdd(store, data) { return new Promise((res, rej) => { const tx = db.transaction(store, 'readwrite'); const req = tx.objectStore(store).add(data); req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); }); }
+        function dbPut(store, data) { return new Promise((res, rej) => { const tx = db.transaction(store, 'readwrite'); const req = tx.objectStore(store).put(data); req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); }); }
+        function dbGetAll(store) { return new Promise((res, rej) => { const tx = db.transaction(store, 'readonly'); const req = tx.objectStore(store).getAll(); req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); }); }
+        function dbDelete(store, id) { return new Promise((res, rej) => { const tx = db.transaction(store, 'readwrite'); const req = tx.objectStore(store).delete(id); req.onsuccess = () => res(); req.onerror = () => rej(req.error); }); }
+
+        // ===================================================================
+        // 2. FONCTIONS METIER
+        // ===================================================================
+        async function getAllProducts() { if (!db) await openDB(); return await dbGetAll('products'); }
+        async function getProductByRef(ref) {
+            if (!ref) return null;
+            const all = await getAllProducts();
+            return all.find(p => p.ref && p.ref.toUpperCase() === ref.toUpperCase());
+        }
+        async function addMovement(ref, type, qty, note = '') {
+            await dbAdd('movements', { ref, type, qty, note, date: new Date().toISOString() });
+        }
+
+        // ===================================================================
+        // 3. FUZZY AI (Reconnaissance intelligente)
+        // ===================================================================
+        let fuseInstance = null;
+        async function buildFuseIndex() {
+            const products = await getAllProducts();
+            fuseInstance = new Fuse(products, {
+                keys: ['ref', 'lib'],
+                threshold: 0.4, // Tolérance aux erreurs
+                ignoreLocation: true,
+                useExtendedSearch: true,
+                distance: 100
+            });
+        }
+
+        async function smartSearch(query) {
+            if (!query || !query.trim()) return null;
+            const q = query.trim();
+            // 1. Recherche exacte
+            const exact = await getProductByRef(q);
+            if (exact) return { exact, suggestions: [] };
+            // 2. Recherche floue
+            if (!fuseInstance) await buildFuseIndex();
+            const results = fuseInstance.search(q);
+            if (results.length > 0) {
+                return { exact: null, suggestions: results.slice(0, 3).map(r => r.item) };
             }
-          }
-        });
-
-        document.getElementById("totalItems").innerText = totalItems;
-        document.getElementById("totalValue").innerText =
-          totalValue.toFixed(0) + "€";
-        document.getElementById("lowStockCount").innerText = lowStock;
-        document.getElementById("expiryCount").innerText = expiring;
-
-        // Alertes
-        const alertList = document.getElementById("alertList");
-        if (alerts.length === 0) {
-          alertList.innerHTML =
-            '<li style="color:#22c55e; text-align:center; padding:15px;">✅ Toutes les alertes sont vertes !</li>';
-        } else {
-          alertList.innerHTML = alerts
-            .slice(0, 10)
-            .map(
-              (a) =>
-                `<li><span>${a.ref} - ${a.lib}</span> <span class="badge ${a.type}">${a.msg}</span></li>`,
-            )
-            .join("");
+            return { exact: null, suggestions: [] };
         }
 
-        // Derniers mouvements
-        const movements = await getLastMovements(10);
-        const movContainer = document.getElementById("lastMovements");
-        if (movements.length === 0) {
-          movContainer.innerHTML =
-            '<li style="color:#64748b; text-align:center; padding:15px;">Aucun mouvement enregistré</li>';
-        } else {
-          movContainer.innerHTML = movements
-            .map((m) => {
-              const icon = m.type === "in" ? "📥" : "📤";
-              const color = m.type === "in" ? "#22c55e" : "#ef4444";
-              return `<li><span>${icon} ${m.ref} (x${m.qty})</span> <span style="color:${color}; font-size:0.8rem;">${new Date(m.date).toLocaleString("fr-FR")}</span></li>`;
-            })
-            .join("");
+        // ===================================================================
+        // 4. UI - RENDU
+        // ===================================================================
+        async function refreshDashboard() {
+            const products = await getAllProducts();
+            let totalVal = 0, low = 0, exp = 0;
+            const today = new Date(); const d30 = new Date(); d30.setDate(today.getDate()+30);
+            products.forEach(p => {
+                totalVal += (parseFloat(p.prix)||0) * (parseInt(p.qty)||0);
+                if ((parseInt(p.qty)||0) <= (parseInt(p.seuil)||0)) low++;
+                if (p.dlc && new Date(p.dlc) <= d30) exp++;
+            });
+            document.getElementById('totalItems').innerText = products.length;
+            document.getElementById('totalValue').innerText = totalVal.toFixed(0) + '€';
+            document.getElementById('lowStockCount').innerText = low;
+            document.getElementById('expiryCount').innerText = exp;
+            // Alertes
+            const alerts = products.filter(p => (parseInt(p.qty)||0) <= (parseInt(p.seuil)||0));
+            const alertList = document.getElementById('alertList');
+            if (alerts.length === 0) alertList.innerHTML = '<li style="color:#22c55e;">✅ Tout est vert</li>';
+            else alertList.innerHTML = alerts.slice(0,5).map(p => `<li>${p.ref} - ${p.lib} <span style="color:#ef4444;">Stock: ${p.qty}</span></li>`).join('');
         }
-      }
 
-      async function renderStockList(filter = "") {
-        const container = document.getElementById("stockListContainer");
-        const products = await getAllProducts();
-        const filtered = products.filter(
-          (p) =>
-            (p.ref && p.ref.toUpperCase().includes(filter.toUpperCase())) ||
-            (p.lib && p.lib.toUpperCase().includes(filter.toUpperCase())),
-        );
-        if (filtered.length === 0) {
-          container.innerHTML =
-            '<div class="card" style="text-align:center; color:#64748b; padding:30px;">Aucune pièce trouvée.</div>';
-          return;
-        }
-        container.innerHTML = filtered
-          .map((p) => {
-            const qty = parseInt(p.qty) || 0;
-            const seuil = parseInt(p.seuil) || 0;
-            const isLow = qty <= 0 || qty <= seuil;
-            return `<div class="stock-item ${isLow ? "low" : ""}">
-                    <div><div class="ref">${p.ref || "N/A"}</div><div class="lib">${p.lib || "Sans libellé"}</div></div>
-                    <div class="qty">${qty}</div>
-                    <div style="font-size:0.8rem; color:#94a3b8;">${p.emplacement || "-"}</div>
+        async function renderStockList(filter = '') {
+            const container = document.getElementById('stockListContainer');
+            const products = await getAllProducts();
+            const filtered = products.filter(p => 
+                (p.ref && p.ref.toUpperCase().includes(filter.toUpperCase())) ||
+                (p.lib && p.lib.toUpperCase().includes(filter.toUpperCase()))
+            );
+            if (filtered.length === 0) { container.innerHTML = '<div class="card" style="text-align:center;color:#64748b;">Aucune pièce</div>'; return; }
+            container.innerHTML = filtered.map(p => {
+                const qty = parseInt(p.qty)||0; const seuil = parseInt(p.seuil)||0;
+                const imgHtml = p.image ? `<img src="${p.image}" class="img-thumb" />` : `<div class="img-thumb" style="background:#334155;display:flex;align-items:center;justify-content:center;color:#94a3b8;"><i class="fas fa-image"></i></div>`;
+                return `<div class="stock-item ${qty <= seuil ? 'low' : ''}">
+                    ${imgHtml}
+                    <div><div class="ref">${p.ref}</div><div class="lib">${p.lib}</div></div>
+                    <div class="qty" style="text-align:center;">${qty}</div>
+                    <div style="font-size:0.8rem;color:#94a3b8;">${p.emplacement||'-'}</div>
                     <div class="actions">
-                        <i class="fas fa-edit" onclick="openEditModal(${p.id})"></i>
-                        <i class="fas fa-trash" onclick="deleteProduct(${p.id})" style="color:#ef4444;"></i>
+                        <i class="fas fa-edit" onclick="openEditModal(${p.id})" style="color:#eab308;cursor:pointer;"></i>
+                        <i class="fas fa-trash" onclick="deleteProduct(${p.id})" style="color:#ef4444;cursor:pointer;margin-left:8px;"></i>
                     </div>
                 </div>`;
-          })
-          .join("");
-      }
-
-      // ===================================================================
-      // 4. SCANNER (html5-qrcode)
-      // ===================================================================
-      let html5Scanner = null;
-      let isScannerRunning = false;
-
-      async function onScanSuccess(decodedText) {
-        // On a trouvé un code
-        document.getElementById("manualScanInput").value = decodedText;
-        await handleScanResult(decodedText);
-        // On arrête la caméra pour économiser la batterie
-        if (html5Scanner && isScannerRunning) {
-          try {
-            await html5Scanner.stop();
-            isScannerRunning = false;
-            document.getElementById("toggleScannerBtn").innerHTML =
-              '<i class="fas fa-play"></i> Démarrer le scan';
-          } catch (e) {}
-        }
-      }
-
-      function onScanFailure(err) {
-        // Ignorer les erreurs de frame (normal)
-      }
-
-      async function toggleScanner() {
-        const readerDiv = document.getElementById("reader");
-        const btn = document.getElementById("toggleScannerBtn");
-        if (isScannerRunning) {
-          if (html5Scanner) {
-            await html5Scanner.stop();
-            isScannerRunning = false;
-            btn.innerHTML = '<i class="fas fa-play"></i> Démarrer le scan';
-          }
-          return;
-        }
-        if (!html5Scanner) {
-          html5Scanner = new Html5Qrcode("reader");
-        }
-        try {
-          await html5Scanner.start(
-            { facingMode: "environment" },
-            { fps: 15, qrbox: { width: 280, height: 200 } },
-            onScanSuccess,
-            onScanFailure,
-          );
-          isScannerRunning = true;
-          btn.innerHTML = '<i class="fas fa-stop"></i> Arrêter le scan';
-        } catch (err) {
-          alert("Impossible d'accéder à la caméra. Vérifiez les permissions.");
-          console.error(err);
-        }
-      }
-
-      document
-        .getElementById("toggleScannerBtn")
-        .addEventListener("click", toggleScanner);
-
-      // ===================================================================
-      // 5. GESTION DU SCAN / RECHERCHE MANUELLE
-      // ===================================================================
-      async function handleScanResult(input) {
-        const container = document.getElementById("scanResultContainer");
-        const content = document.getElementById("scanResultContent");
-        if (!input.trim()) {
-          container.style.display = "none";
-          return;
+            }).join('');
         }
 
-        const product = await getProductByRef(input.trim());
-        container.style.display = "block";
+        // ===================================================================
+        // 5. SCANNER CAMERA
+        // ===================================================================
+        let html5Scanner = null, isScanning = false;
+        async function toggleScanner() {
+            const btn = document.getElementById('toggleScannerBtn');
+            if (isScanning) { if(html5Scanner) await html5Scanner.stop(); isScanning=false; btn.innerHTML='<i class="fas fa-play"></i> Démarrer'; return; }
+            if (!html5Scanner) html5Scanner = new Html5Qrcode("reader");
+            try {
+                await html5Scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 280, height: 200 } },
+                    async (text) => { await handleScanResult(text); if(html5Scanner) { await html5Scanner.stop(); isScanning=false; btn.innerHTML='<i class="fas fa-play"></i> Démarrer'; } },
+                    () => {}
+                );
+                isScanning = true; btn.innerHTML = '<i class="fas fa-stop"></i> Arrêter';
+            } catch(e) { alert('Caméra inaccessible'); }
+        }
+        document.getElementById('toggleScannerBtn').addEventListener('click', toggleScanner);
 
-        if (product) {
-          const qty = parseInt(product.qty) || 0;
-          const seuil = parseInt(product.seuil) || 0;
-          content.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div><strong style="color:#eab308;">${product.ref}</strong> - ${product.lib}</div>
-                        <span style="background:#334155; padding:4px 12px; border-radius:30px;">${qty} en stock</span>
-                    </div>
-                    <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-                        <span>📍 ${product.emplacement || "Non défini"}</span>
-                        <span>💰 ${product.prix || 0}€</span>
-                        ${qty <= 0 || qty <= seuil ? '<span style="color:#ef4444;">⚠️ ALERTE STOCK</span>' : ""}
-                        ${product.dlc ? `<span>📅 DLC: ${product.dlc}</span>` : ""}
-                    </div>
-                    <div style="margin-top:12px; display:flex; gap:10px;">
-                        <button class="btn btn-success btn-sm" onclick="quickMovement('${product.ref}', 'in')"><i class="fas fa-arrow-down"></i> Réception +1</button>
-                        <button class="btn btn-danger btn-sm" onclick="quickMovement('${product.ref}', 'out')"><i class="fas fa-arrow-up"></i> Sortie -1</button>
-                        <button class="btn btn-sm" onclick="openEditModal(${product.id})"><i class="fas fa-edit"></i> Modifier</button>
-                    </div>
+        // ===================================================================
+        // 6. GESTION SCAN + IA
+        // ===================================================================
+        async function handleScanResult(input) {
+            const container = document.getElementById('scanResultContainer');
+            const content = document.getElementById('scanResultContent');
+            if (!input.trim()) { container.style.display = 'none'; return; }
+            container.style.display = 'block';
+            
+            const result = await smartSearch(input.trim());
+            
+            if (result.exact) {
+                const p = result.exact;
+                content.innerHTML = await buildProductCard(p);
+            } else if (result.suggestions.length > 0) {
+                let html = `<div style="color:#f59e0b;margin-bottom:10px;">🧠 IA: "${input}" non trouvé. Vouliez-vous dire ?</div>`;
+                for (let sug of result.suggestions) {
+                    html += `<div class="suggestion-item" onclick="selectSuggestion('${sug.ref}')">
+                        <strong>${sug.ref}</strong> - ${sug.lib} (Stock: ${sug.qty})
+                    </div>`;
+                }
+                html += `<button class="btn btn-primary btn-sm mt-10" onclick="openAddModalWithRef('${input}')">➕ Créer "${input}"</button>`;
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = `
+                    <div style="color:#ef4444;">❌ Aucune correspondance pour "${input}".</div>
+                    <button class="btn btn-primary btn-sm mt-10" onclick="openAddModalWithRef('${input}')">➕ Créer cette pièce</button>
                 `;
-        } else {
-          content.innerHTML = `
-                    <div style="color:#f59e0b; margin-bottom:10px;">🔍 Référence "${input}" non trouvée dans le stock.</div>
-                    <button class="btn btn-primary btn-sm" onclick="openAddModalWithRef('${input}')"><i class="fas fa-plus"></i> Créer cette pièce</button>
-                `;
+            }
         }
-      }
 
-      // Événement recherche manuelle
-      let scanTimeout;
-      document
-        .getElementById("manualScanInput")
-        .addEventListener("input", function () {
-          clearTimeout(scanTimeout);
-          const val = this.value.trim();
-          if (val === "") {
-            document.getElementById("scanResultContainer").style.display =
-              "none";
-            return;
-          }
-          scanTimeout = setTimeout(() => handleScanResult(val), 300);
+        async function selectSuggestion(ref) {
+            const p = await getProductByRef(ref);
+            if (!p) return;
+            const container = document.getElementById('scanResultContainer');
+            document.getElementById('scanResultContent').innerHTML = await buildProductCard(p);
+            document.getElementById('manualScanInput').value = ref;
+        }
+
+        async function buildProductCard(p) {
+            const qty = parseInt(p.qty)||0; const seuil = parseInt(p.seuil)||0;
+            const imgHtml = p.image ? `<img src="${p.image}" style="max-height:100px;border-radius:12px;margin:5px 0;" />` : '';
+            return `
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div><strong style="color:#eab308;">${p.ref}</strong> - ${p.lib}</div>
+                    <span style="background:#334155;padding:4px 12px;border-radius:30px;">${qty} en stock</span>
+                </div>
+                ${imgHtml}
+                <div style="margin:5px 0;">📍 ${p.emplacement||'Non défini'} | 💰 ${p.prix||0}€</div>
+                ${qty <= seuil ? '<span style="color:#ef4444;">⚠️ ALERTE STOCK</span>' : ''}
+                <div class="flex mt-10">
+                    <button class="btn btn-success btn-sm" onclick="quickMovement('${p.ref}','in')"><i class="fas fa-arrow-down"></i> +1</button>
+                    <button class="btn btn-danger btn-sm" onclick="quickMovement('${p.ref}','out')"><i class="fas fa-arrow-up"></i> -1</button>
+                    <button class="btn btn-sm" onclick="openEditModal(${p.id})"><i class="fas fa-edit"></i></button>
+                </div>
+            `;
+        }
+
+        let scanTimeout;
+        document.getElementById('manualScanInput').addEventListener('input', function() {
+            clearTimeout(scanTimeout);
+            const val = this.value.trim();
+            if (!val) { document.getElementById('scanResultContainer').style.display = 'none'; return; }
+            scanTimeout = setTimeout(() => handleScanResult(val), 400);
         });
 
-      // ===================================================================
-      // 6. MOUVEMENTS RAPIDES
-      // ===================================================================
-      async function quickMovement(ref, type) {
-        const product = await getProductByRef(ref);
-        if (!product) {
-          alert("Pièce introuvable !");
-          return;
-        }
-        let qty = parseInt(product.qty) || 0;
-        if (type === "out" && qty <= 0) {
-          alert("Stock épuisé !");
-          return;
-        }
-        qty = type === "in" ? qty + 1 : qty - 1;
-        product.qty = qty;
-        await dbPut("products", product);
-        await addMovement(ref, type, 1, "Mouvement rapide");
-        refreshDashboard();
-        renderStockList(
-          document.getElementById("stockSearchInput")?.value || "",
-        );
-        // Rafraîchir le scan si affiché
-        if (
-          document.getElementById("scanResultContainer").style.display !==
-          "none"
-        ) {
-          await handleScanResult(ref);
-        }
-        alert(`✅ Mouvement effectué. Nouvelle quantité : ${qty}`);
-      }
-
-      async function processMovement(type) {
-        const ref = document.getElementById("movementRef").value.trim();
-        const qty = parseInt(document.getElementById("movementQty").value) || 0;
-        if (!ref) {
-          alert("Entrez une référence");
-          return;
-        }
-        if (qty <= 0) {
-          alert("Quantité invalide");
-          return;
-        }
-        const product = await getProductByRef(ref);
-        if (!product) {
-          alert(`Référence "${ref}" introuvable. Créez-la d'abord.`);
-          return;
-        }
-        let currentQty = parseInt(product.qty) || 0;
-        if (type === "out" && currentQty < qty) {
-          alert(`Stock insuffisant (${currentQty} disponible)`);
-          return;
-        }
-        product.qty = type === "in" ? currentQty + qty : currentQty - qty;
-        await dbPut("products", product);
-        await addMovement(ref, type, qty, `Mouvement manuel (${type})`);
-        refreshDashboard();
-        renderStockList(
-          document.getElementById("stockSearchInput")?.value || "",
-        );
-        document.getElementById("movementRef").value = "";
-        document.getElementById("movementQty").value = "1";
-        alert(
-          `✅ ${type === "in" ? "Réception" : "Sortie"} de ${qty} pièce(s) effectuée.`,
-        );
-        // Rafraîchir historique
-        refreshHistory();
-      }
-
-      async function refreshHistory() {
-        const movements = await getLastMovements(20);
-        const container = document.getElementById("historyList");
-        if (movements.length === 0) {
-          container.innerHTML =
-            '<li style="color:#64748b; text-align:center; padding:15px;">Aucun historique</li>';
-          return;
-        }
-        container.innerHTML = movements
-          .map((m) => {
-            const icon = m.type === "in" ? "📥" : "📤";
-            const color = m.type === "in" ? "#22c55e" : "#ef4444";
-            return `<li><span>${icon} <strong>${m.ref}</strong> x${m.qty} ${m.note ? "(" + m.note + ")" : ""}</span> <span style="color:#94a3b8; font-size:0.7rem;">${new Date(m.date).toLocaleString("fr-FR")}</span></li>`;
-          })
-          .join("");
-      }
-
-      // ===================================================================
-      // 7. MODAL - AJOUT / MODIFICATION
-      // ===================================================================
-      function openAddModal() {
-        document.getElementById("modalTitle").innerText = "Ajouter une pièce";
-        document.getElementById("editId").value = "";
-        ["fRef", "fLib", "fPrix", "fEmpl", "fQty", "fSeuil", "fDlc"].forEach(
-          (id) => (document.getElementById(id).value = ""),
-        );
-        document.getElementById("fQty").value = 0;
-        document.getElementById("fSeuil").value = 5;
-        document.getElementById("productModal").classList.add("open");
-      }
-
-      function openAddModalWithRef(ref) {
-        openAddModal();
-        document.getElementById("fRef").value = ref;
-      }
-
-      async function openEditModal(id) {
-        const products = await getAllProducts();
-        const product = products.find((p) => p.id === id);
-        if (!product) return;
-        document.getElementById("modalTitle").innerText = "Modifier la pièce";
-        document.getElementById("editId").value = id;
-        document.getElementById("fRef").value = product.ref || "";
-        document.getElementById("fLib").value = product.lib || "";
-        document.getElementById("fPrix").value = product.prix || "";
-        document.getElementById("fEmpl").value = product.emplacement || "";
-        document.getElementById("fQty").value = product.qty || 0;
-        document.getElementById("fSeuil").value = product.seuil || 5;
-        document.getElementById("fDlc").value = product.dlc || "";
-        document.getElementById("productModal").classList.add("open");
-      }
-
-      function closeModal() {
-        document.getElementById("productModal").classList.remove("open");
-      }
-
-      async function saveProduct() {
-        const id = document.getElementById("editId").value;
-        const ref = document.getElementById("fRef").value.trim();
-        const lib = document.getElementById("fLib").value.trim();
-        if (!ref || !lib) {
-          alert("Référence et Libellé obligatoires");
-          return;
+        // ===================================================================
+        // 7. MOUVEMENTS RAPIDES
+        // ===================================================================
+        async function quickMovement(ref, type) {
+            const p = await getProductByRef(ref); if(!p) return alert('Pièce introuvable');
+            let q = parseInt(p.qty)||0;
+            if (type === 'out' && q <= 0) return alert('Stock épuisé');
+            p.qty = type === 'in' ? q+1 : q-1;
+            await dbPut('products', p);
+            await addMovement(ref, type, 1);
+            refreshDashboard(); renderStockList(document.getElementById('stockSearchInput')?.value||'');
+            await handleScanResult(ref);
         }
 
-        const data = {
-          ref,
-          lib,
-          prix: parseFloat(document.getElementById("fPrix").value) || 0,
-          emplacement: document.getElementById("fEmpl").value.trim(),
-          qty: parseInt(document.getElementById("fQty").value) || 0,
-          seuil: parseInt(document.getElementById("fSeuil").value) || 5,
-          dlc: document.getElementById("fDlc").value || null,
-        };
-
-        if (id) {
-          // Modification
-          data.id = parseInt(id);
-          await dbPut("products", data);
-        } else {
-          // Vérifier doublon
-          const exist = await getProductByRef(ref);
-          if (exist) {
-            alert("Cette référence existe déjà !");
-            return;
-          }
-          await dbAdd("products", data);
-        }
-        closeModal();
-        refreshDashboard();
-        renderStockList(
-          document.getElementById("stockSearchInput")?.value || "",
-        );
-        // Si on est sur l'onglet scan, rafraîchir le résultat
-        if (
-          document.getElementById("scanResultContainer").style.display !==
-          "none"
-        ) {
-          await handleScanResult(ref);
-        }
-        alert("✅ Pièce sauvegardée !");
-      }
-
-      async function deleteProduct(id) {
-        if (!confirm("Supprimer définitivement cette pièce ?")) return;
-        await dbDelete("products", id);
-        refreshDashboard();
-        renderStockList(
-          document.getElementById("stockSearchInput")?.value || "",
-        );
-        alert("🗑️ Supprimée");
-      }
-
-      // ===================================================================
-      // 8. NAVIGATION
-      // ===================================================================
-      document.querySelectorAll("#bottom-nav .nav-item").forEach((btn) => {
-        btn.addEventListener("click", function () {
-          document
-            .querySelectorAll("#bottom-nav .nav-item")
-            .forEach((b) => b.classList.remove("active"));
-          this.classList.add("active");
-          const pageId = this.dataset.page;
-          document
-            .querySelectorAll(".page-container")
-            .forEach((p) => p.classList.remove("active"));
-          document.getElementById(pageId).classList.add("active");
-
-          // Si on quitte la page scanner, arrêter la caméra
-          if (pageId !== "page-scanner" && isScannerRunning) {
-            toggleScanner(); // pour l'arrêter
-          }
-          // Si on arrive sur mouvements, refresh history
-          if (pageId === "page-mouvements") refreshHistory();
-          if (pageId === "page-stock")
-            renderStockList(
-              document.getElementById("stockSearchInput")?.value || "",
-            );
-          if (pageId === "page-dashboard") refreshDashboard();
-        });
-      });
-
-      // Recherche dans le stock
-      document
-        .getElementById("stockSearchInput")
-        .addEventListener("input", function () {
-          renderStockList(this.value);
-        });
-
-      // ===================================================================
-      // 9. CSV - ODOO BRIDGE
-      // ===================================================================
-      function escapeCSV(str) {
-        if (str === null || str === undefined) return "";
-        if (
-          typeof str === "string" &&
-          (str.includes(",") || str.includes('"') || str.includes("\n"))
-        ) {
-          return '"' + str.replace(/"/g, '""') + '"';
-        }
-        return str;
-      }
-
-      async function exportCSV() {
-        const products = await getAllProducts();
-        if (products.length === 0) {
-          alert("Stock vide, rien à exporter.");
-          return;
-        }
-        // Colonnes: REFERENCE, LIBELLE, PRIX D'ACHAT, EMPLACEMENT, QUANTITE, SEUIL, DLC
-        let header =
-          'REFERENCE,LIBELLE,"PRIX D\'ACHAT",EMPLACEMENT,QUANTITE,SEUIL,DLC\n';
-        const rows = products.map((p) => {
-          return [
-            escapeCSV(p.ref),
-            escapeCSV(p.lib),
-            escapeCSV(p.prix),
-            escapeCSV(p.emplacement),
-            escapeCSV(p.qty),
-            escapeCSV(p.seuil),
-            escapeCSV(p.dlc),
-          ].join(",");
-        });
-        const csvContent = header + rows.join("\n");
-        const blob = new Blob(["\uFEFF" + csvContent], {
-          type: "text/csv;charset=utf-8;",
-        }); // BOM pour Excel
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "UNITED_MOTORS_export_odoo.csv";
-        link.click();
-        URL.revokeObjectURL(link.href);
-      }
-
-      async function importCSV() {
-        const fileInput = document.getElementById("csvFileInput");
-        const resultDiv = document.getElementById("importResult");
-        if (!fileInput.files || fileInput.files.length === 0) {
-          resultDiv.innerHTML =
-            '<span style="color:#f59e0b;">Veuillez sélectionner un fichier CSV.</span>';
-          return;
-        }
-        const file = fileInput.files[0];
-        const text = await file.text();
-        const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "");
-        if (lines.length < 2) {
-          resultDiv.innerHTML =
-            '<span style="color:#ef4444;">Fichier vide ou invalide.</span>';
-          return;
+        async function processMovement(type) {
+            const ref = document.getElementById('movementRef').value.trim();
+            const qty = parseInt(document.getElementById('movementQty').value) || 0;
+            if (!ref || qty <= 0) return alert('Référence et quantité valides');
+            const p = await getProductByRef(ref);
+            if (!p) return alert(`"${ref}" introuvable. Créez-la.`);
+            let q = parseInt(p.qty)||0;
+            if (type === 'out' && q < qty) return alert(`Stock insuffisant (${q})`);
+            p.qty = type === 'in' ? q+qty : q-qty;
+            await dbPut('products', p);
+            await addMovement(ref, type, qty);
+            refreshDashboard(); renderStockList();
+            document.getElementById('movementRef').value = '';
+            refreshHistory();
+            alert('✅ Mouvement effectué');
         }
 
-        // Extraire les en-têtes
-        const headers = lines[0]
-          .split(",")
-          .map((h) => h.replace(/^"|"$/g, "").trim().toUpperCase());
-        // Map des colonnes
-        const map = {
-          REFERENCE: "ref",
-          REF: "ref",
-          CODE: "ref",
-          LIBELLE: "lib",
-          LIB: "lib",
-          DESCRIPTION: "lib",
-          "PRIX D'ACHAT": "prix",
-          PRIX: "prix",
-          'PRIX D"ACHAT': "prix",
-          EMPLACEMENT: "emplacement",
-          LOCATION: "emplacement",
-          QUANTITE: "qty",
-          QTE: "qty",
-          QUANTITY: "qty",
-          SEUIL: "seuil",
-          "SEUIL ALERTE": "seuil",
-          DLC: "dlc",
-          "DATE PEREMPTION": "dlc",
-          EXPIRY: "dlc",
-        };
-        // Trouver les index
-        const idxRef = headers.findIndex((h) =>
-          ["REFERENCE", "REF", "CODE"].includes(h),
-        );
-        const idxLib = headers.findIndex((h) =>
-          ["LIBELLE", "LIB", "DESCRIPTION"].includes(h),
-        );
-        const idxPrix = headers.findIndex((h) =>
-          ["PRIX D'ACHAT", "PRIX", 'PRIX D"ACHAT'].includes(h),
-        );
-        const idxEmpl = headers.findIndex((h) =>
-          ["EMPLACEMENT", "LOCATION"].includes(h),
-        );
-        const idxQty = headers.findIndex((h) =>
-          ["QUANTITE", "QTE", "QUANTITY"].includes(h),
-        );
-        const idxSeuil = headers.findIndex((h) =>
-          ["SEUIL", "SEUIL ALERTE"].includes(h),
-        );
-        const idxDlc = headers.findIndex((h) =>
-          ["DLC", "DATE PEREMPTION", "EXPIRY"].includes(h),
-        );
-
-        if (idxRef === -1 || idxLib === -1) {
-          resultDiv.innerHTML =
-            '<span style="color:#ef4444;">Colonnes "REFERENCE" et "LIBELLE" obligatoires.</span>';
-          return;
+        async function refreshHistory() {
+            const all = await dbGetAll('movements');
+            const list = all.sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,20);
+            const container = document.getElementById('historyList');
+            if (list.length === 0) { container.innerHTML = '<li style="color:#64748b;">Aucun mouvement</li>'; return; }
+            container.innerHTML = list.map(m => `<li>${m.type==='in'?'📥':'📤'} ${m.ref} x${m.qty} <span style="color:#94a3b8;font-size:0.7rem;">${new Date(m.date).toLocaleString()}</span></li>`).join('');
         }
 
-        let imported = 0,
-          updated = 0;
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i]
-            .split(",")
-            .map((v) => v.replace(/^"|"$/g, "").trim());
-          const ref = values[idxRef] || "";
-          const lib = values[idxLib] || "";
-          if (!ref || !lib) continue;
-          const prix = parseFloat(values[idxPrix]) || 0;
-          const emplacement = values[idxEmpl] || "";
-          const qty = parseInt(values[idxQty]) || 0;
-          const seuil = parseInt(values[idxSeuil]) || 5;
-          const dlc = values[idxDlc] || null;
+        // ===================================================================
+        // 8. MODAL
+        // ===================================================================
+        function openAddModal() {
+            document.getElementById('modalTitle').innerText = 'Ajouter une pièce';
+            document.getElementById('editId').value = '';
+            ['fRef','fLib','fPrix','fEmpl','fQty','fSeuil','fDlc'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('fQty').value = 0; document.getElementById('fSeuil').value = 5;
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('fImage').value = '';
+            document.getElementById('productModal').classList.add('open');
+        }
+        function openAddModalWithRef(ref) { openAddModal(); document.getElementById('fRef').value = ref; }
+        async function openEditModal(id) {
+            const products = await getAllProducts();
+            const p = products.find(x => x.id === id); if(!p) return;
+            document.getElementById('modalTitle').innerText = 'Modifier';
+            document.getElementById('editId').value = id;
+            document.getElementById('fRef').value = p.ref||'';
+            document.getElementById('fLib').value = p.lib||'';
+            document.getElementById('fPrix').value = p.prix||'';
+            document.getElementById('fEmpl').value = p.emplacement||'';
+            document.getElementById('fQty').value = p.qty||0;
+            document.getElementById('fSeuil').value = p.seuil||5;
+            document.getElementById('fDlc').value = p.dlc||'';
+            const preview = document.getElementById('imagePreview');
+            if (p.image) { preview.src = p.image; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+            document.getElementById('productModal').classList.add('open');
+        }
+        function closeModal() { document.getElementById('productModal').classList.remove('open'); }
 
-          const existing = await getProductByRef(ref);
-          if (existing) {
-            // Mettre à jour sans écraser les données utilisateur? On écrase tout sauf si valeur vide
-            existing.lib = lib || existing.lib;
-            existing.prix = prix || existing.prix;
-            existing.emplacement = emplacement || existing.emplacement;
-            existing.qty = qty;
-            existing.seuil = seuil || existing.seuil;
-            existing.dlc = dlc || existing.dlc;
-            await dbPut("products", existing);
-            updated++;
-          } else {
-            await dbAdd("products", {
-              ref,
-              lib,
-              prix,
-              emplacement,
-              qty,
-              seuil,
-              dlc,
+        // Compression d'image
+        function compressImage(file, maxWidth=300) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ratio = maxWidth / img.width;
+                        canvas.width = maxWidth;
+                        canvas.height = img.height * ratio;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
             });
-            imported++;
-          }
         }
-        resultDiv.innerHTML = `<span style="color:#22c55e;">✅ Import terminé : ${imported} créées, ${updated} mises à jour.</span>`;
-        refreshDashboard();
-        renderStockList(
-          document.getElementById("stockSearchInput")?.value || "",
-        );
-      }
 
-      // ===================================================================
-      // 10. RÉINITIALISATION
-      // ===================================================================
-      async function clearAllData() {
-        const products = await getAllProducts();
-        for (let p of products) await dbDelete("products", p.id);
-        const movements = await dbGetAll("movements");
-        for (let m of movements) await dbDelete("movements", m.id);
-        refreshDashboard();
-        renderStockList("");
-        document.getElementById("historyList").innerHTML =
-          '<li style="color:#64748b; text-align:center; padding:15px;">Aucun historique</li>';
-        alert("🧹 Base réinitialisée.");
-      }
+        document.getElementById('fImage').addEventListener('change', async function(e) {
+            if (this.files && this.files[0]) {
+                const compressed = await compressImage(this.files[0]);
+                document.getElementById('imagePreview').src = compressed;
+                document.getElementById('imagePreview').style.display = 'block';
+            }
+        });
 
-      // ===================================================================
-      // 11. INIT
-      // ===================================================================
-      (async function init() {
-        await openDB();
-        await refreshDashboard();
-        await renderStockList();
-        await refreshHistory();
-        // Gestion du modal en cliquant à l'extérieur
-        document
-          .getElementById("productModal")
-          .addEventListener("click", function (e) {
-            if (e.target === this) closeModal();
-          });
-      })();
+        async function saveProduct() {
+            const id = document.getElementById('editId').value;
+            const ref = document.getElementById('fRef').value.trim();
+            const lib = document.getElementById('fLib').value.trim();
+            if (!ref || !lib) return alert('Référence et Libellé obligatoires');
+            const image = document.getElementById('imagePreview').style.display !== 'none' ? document.getElementById('imagePreview').src : null;
+            const data = {
+                ref, lib,
+                prix: parseFloat(document.getElementById('fPrix').value) || 0,
+                emplacement: document.getElementById('fEmpl').value.trim(),
+                qty: parseInt(document.getElementById('fQty').value) || 0,
+                seuil: parseInt(document.getElementById('fSeuil').value) || 5,
+                dlc: document.getElementById('fDlc').value || null,
+                image: image
+            };
+            if (id) { data.id = parseInt(id); await dbPut('products', data); }
+            else {
+                const exist = await getProductByRef(ref);
+                if (exist) return alert('Doublon !');
+                await dbAdd('products', data);
+            }
+            closeModal();
+            refreshDashboard(); renderStockList();
+            await buildFuseIndex();
+            alert('✅ Sauvegardé');
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Supprimer ?')) return;
+            await dbDelete('products', id);
+            refreshDashboard(); renderStockList();
+            await buildFuseIndex();
+        }
+
+        // ===================================================================
+        // 9. EXCEL & PDF
+        // ===================================================================
+        async function exportExcel() {
+            const products = await getAllProducts();
+            if (products.length === 0) return alert('Stock vide');
+            const data = products.map(p => ({
+                'REFERENCE': p.ref, 'LIBELLE': p.lib, 'PRIX D\'ACHAT': p.prix,
+                'EMPLACEMENT': p.emplacement, 'QUANTITE': p.qty, 'SEUIL': p.seuil, 'DLC': p.dlc
+            }));
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(data);
+            XLSX.utils.book_append_sheet(wb, ws, 'Stock');
+            XLSX.writeFile(wb, 'UNITED_MOTORS_STOCK.xlsx');
+        }
+
+        async function importExcel() {
+            const input = document.getElementById('excelFileInput');
+            const resultDiv = document.getElementById('importResult');
+            if (!input.files || input.files.length === 0) { resultDiv.innerHTML = '<span style="color:#f59e0b;">Choisissez un fichier</span>'; return; }
+            const data = await input.files[0].arrayBuffer();
+            const wb = XLSX.read(data, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(ws);
+            let imported = 0, updated = 0;
+            for (let row of rows) {
+                const ref = (row['REFERENCE'] || row['REF'] || '').toString().trim();
+                const lib = (row['LIBELLE'] || row['LIB'] || '').toString().trim();
+                if (!ref || !lib) continue;
+                const existing = await getProductByRef(ref);
+                const obj = {
+                    ref, lib,
+                    prix: parseFloat(row['PRIX D\'ACHAT'] || row['PRIX'] || 0) || 0,
+                    emplacement: (row['EMPLACEMENT'] || '').toString().trim(),
+                    qty: parseInt(row['QUANTITE'] || row['QTE'] || 0) || 0,
+                    seuil: parseInt(row['SEUIL'] || 5) || 5,
+                    dlc: row['DLC'] || null,
+                    image: existing ? existing.image : null
+                };
+                if (existing) { obj.id = existing.id; await dbPut('products', obj); updated++; }
+                else { await dbAdd('products', obj); imported++; }
+            }
+            resultDiv.innerHTML = `<span style="color:#22c55e;">✅ ${imported} créées, ${updated} mises à jour</span>`;
+            refreshDashboard(); renderStockList(); await buildFuseIndex();
+        }
+
+        async function exportPDF() {
+            const products = await getAllProducts();
+            if (products.length === 0) return alert('Stock vide');
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape', 'mm', 'a4');
+            doc.setFontSize(18);
+            doc.setTextColor('#eab308');
+            doc.text('UNITED MOTORS - INVENTAIRE STOCK', 14, 20);
+            doc.setFontSize(10);
+            doc.setTextColor('#333');
+            doc.text(`Généré le ${new Date().toLocaleString()}`, 14, 28);
+            
+            const tableData = products.map(p => [p.ref, p.lib, p.emplacement||'-', p.qty, p.prix||0, ((p.qty||0)*(p.prix||0)).toFixed(2)]);
+            doc.autoTable({
+                head: [['Référence', 'Libellé', 'Emplacement', 'Qté', 'Prix U.', 'Total']],
+                body: tableData,
+                startY: 32,
+                theme: 'grid',
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [11, 17, 32], textColor: [234, 179, 8] },
+                didDrawPage: function(data) {
+                    const total = products.reduce((acc, p) => acc + ((p.qty||0)*(p.prix||0)), 0);
+                    doc.setFontSize(10);
+                    doc.text(`Valeur totale du stock : ${total.toFixed(2)} €`, 14, doc.internal.pageSize.height - 10);
+                }
+            });
+            doc.save('UNITED_MOTORS_INVENTAIRE.pdf');
+        }
+
+        // ===================================================================
+        // 10. NAVIGATION
+        // ===================================================================
+        document.querySelectorAll('#bottom-nav .nav-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('#bottom-nav .nav-item').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const pageId = this.dataset.page;
+                document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+                if (pageId === 'page-mouvements') refreshHistory();
+                if (pageId === 'page-stock') renderStockList(document.getElementById('stockSearchInput')?.value||'');
+                if (pageId === 'page-dashboard') refreshDashboard();
+                if (pageId !== 'page-scanner' && isScanning) toggleScanner();
+            });
+        });
+        document.getElementById('stockSearchInput').addEventListener('input', function() { renderStockList(this.value); });
+
+        // ===================================================================
+        // 11. INIT
+        // ===================================================================
+        (async function init() {
+            await openDB();
+            await buildFuseIndex();
+            await refreshDashboard();
+            await renderStockList();
+            await refreshHistory();
+            document.getElementById('productModal').addEventListener('click', (e) => { if(e.target === e.currentTarget) closeModal(); });
+        })();
+
+        async function clearAllData() {
+            const prods = await getAllProducts();
+            for (let p of prods) await dbDelete('products', p.id);
+            const movs = await dbGetAll('movements');
+            for (let m of movs) await dbDelete('movements', m.id);
+            refreshDashboard(); renderStockList(); 
+            document.getElementById('historyList').innerHTML = '<li style="color:#64748b;">Aucun mouvement</li>';
+            alert('Réinitialisé');
+        }
     </script>
-  </body>
+</body>
 </html>
